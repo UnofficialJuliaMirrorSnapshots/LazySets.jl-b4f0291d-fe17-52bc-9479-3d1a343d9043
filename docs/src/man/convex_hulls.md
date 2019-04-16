@@ -3,7 +3,11 @@
 In this section we illustrate the
 [convex hull operation](https://en.wikipedia.org/wiki/Convex_hull).
 We give examples of the symbolic implementation, and the concrete convex hull in
-low dimensions.
+low dimensions. We show how to test if a point lies in the convex
+hull of a set of points in the plane using `LazySets`. Moreover, we give examples
+of creating the convex hull of sets whose vertices are represented as *static* vectors,
+which can dramatically improve performance in many use cases. Finally, we give
+an example of creating the convex hull of points in higher dimensions.
 
 ```@contents
 Pages = ["convex_hulls.md"]
@@ -88,6 +92,46 @@ p = plot([Singleton(vi) for vi in v])
 plot!(p, VPolygon(hull), alpha=0.2)
 ```
 
+## Test point in convex hull
+
+One can check whether a point lies inside or outside of a convex hull efficiently
+in two dimensions, using the fact that the output of `convex_hull` returns
+the points ordered in counter-clockwise fashion.
+
+!!! note
+    To check if a point `p::AbstractVector` is in another set, e.g. a polygon in
+    vertex representation `V`, use `p ∈ V`. However, if you are working with a
+    `Singleton`, which is a *set* with one element, use *set inclusion* `⊆`.
+    The following example illustrates this difference.
+
+```jldoctest
+julia> points = N -> [randn(2) for i in 1:N];
+julia> v = points(30);
+julia> hull = convex_hull(v);
+julia> Singleton(v[1]) ∈ VPolygon(hull)
+ERROR: cannot make a point-in-set check if the left-hand side is a set;
+either check for set inclusion, as in `S ⊆ X`, or check for membership,
+as in `element(S) ∈ X` (they are equivalent)
+[...]
+```
+
+As the error suggests, either use `element` to access the element of the singleton
+and check if it belongs to the right-hand side set:
+
+```@example example_ch
+element(Singleton(v[1])) ∈ VPolygon(hull)
+```
+
+Or use set inclusion between the singleton and the right-hand side set:
+
+```@example example_ch
+Singleton(v[1]) ⊆ VPolygon(hull)
+```
+
+Let us note that one can also make the point-in-convex-hull test by solving
+a feasibility problem; actually, this is the fallback implementation used for
+in any dimension. However, the specialized approach in 2D is more efficient.
+
 ## Using static vectors
 
 Usual vectors are such that you can `push!` and `pop!` without changing its
@@ -119,3 +163,43 @@ convex_hull([@SVector(rand(2)) for i in 1:3]) # warm-up
 v_static = [SVector{2, Float64}(vi) for vi in v]
 @time convex_hull(v_static)
 ```
+
+## Higher-dimensional convex hull
+
+One can compute the convex hull of points in higher dimensions using `convex_hull`.
+The appropriate algorithm is decided based on the dimensionality of the given
+points.
+
+```@example example_ch
+using Polyhedra
+
+v = [randn(3) for _ in 1:30]
+hull = convex_hull(v)
+typeof(hull), length(v), length(hull)
+```
+
+Here, `convex_hull` is now using the concrete polyhedra library
+[Polyhedra](https://github.com/JuliaPolyhedra/Polyhedra.jl), hence it needs to be
+loaded beforehand.
+
+One can check whether a point belongs to the convex hull using `∈` as follows:
+
+```@example example_ch
+P = VPolytope(hull)
+x = sum(hull)/length(hull)
+
+x ∈ P
+```
+
+Here `x ∈ P` solves a feasibility problem; see the docs of `?∈` for details.
+Equivalently, using set inclusion:
+
+```@example example_ch
+Singleton(x) ⊆ P
+```
+
+If no additional arguments are passed, `convex_hull` uses the default polyhedra
+library from `default_polyhedra_backend` for the given input; different options
+can be passed through the `backend` keyword; see the
+[Julia polyhedra website](https://juliapolyhedra.github.io/) for all the available
+backends.
