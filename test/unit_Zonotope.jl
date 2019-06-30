@@ -102,7 +102,8 @@ for N in [Float64, Rational{Int}, Float32]
     # test number of generators
     Z = Zonotope(N[2, 1], N[-0.5 1.5 0.5 1; 0.5 1.5 1 0.5])
     @test ngens(Z) == 4
-    @test generators(Z) == Z.generators
+    @test genmat(Z) == Z.generators
+    @test ispermutation(collect(generators(Z)), [genmat(Z)[:, j] for j in 1:ngens(Z)])
     # test order reduction
     Zred1 = reduce_order(Z, 1)
     @test ngens(Zred1) == 2
@@ -114,6 +115,10 @@ for N in [Float64, Rational{Int}, Float32]
     Zred3 = reduce_order(Z, 2)
     @test ngens(Zred3) == 4
     @test order(Zred3) == 2
+    Znogen = Zonotope(N[1, 2], Matrix{N}(undef, 2, 0))
+    @test ngens(Znogen) == 0
+    @test genmat(Znogen) == Matrix{N}(undef, 2, 0)
+    @test collect(generators(Znogen)) == Vector{N}()
 
     # test conversion from hyperrectangular sets
     Z = convert(Zonotope, Hyperrectangle(N[2, 3], N[4, 5]))
@@ -181,14 +186,14 @@ for N in [Float64, Rational{Int}, Float32]
     Z2 = Zonotope(zeros(N, 2), hcat(N[0, 1]))
     Zch = overapproximate(ConvexHull(Z1, Z2), Zonotope)
     # the result is a diamond (tight)
-    @test Zch == Zonotope(N[0.0, 0.0], N[0.5 0.5; 0.5 -0.5])
+    @test Zch == Zonotope(N[0, 0], N[0.5 0.5; 0.5 -0.5])
 
     # different order
     Z1 = Zonotope(zeros(N, 2), hcat(N[1, 0]))
     Z2 = Zonotope(N[0, 0], N[1 0; 0 1])
     # the result is a box (tight)
     Zch = overapproximate(ConvexHull(Z1, Z2), Zonotope)
-    @test Zch == Zonotope(N[0.0, 0.0], N[1.0 0.0; 0.0 1.0])
+    @test Zch == Zonotope(N[0, 0], N[1 0; 0 1])
 end
 
 for N in [Float64, Rational{Int}]
@@ -204,5 +209,14 @@ for N in [Float64, Rational{Int}]
     P = HPolytope(constraints_list(Z))
     for d in LazySets.Approximations.BoxDiagDirections{N}(2)
         @test ρ(d, P) == ρ(d, Z)
+    end
+end
+
+for N in [Float64]
+    if test_suite_polyhedra
+        # constraints_list for generator matrix with a zero row
+        Z = Zonotope(N[0, 0], N[2 3; 0 0])
+        P = tovrep(HPolygon(constraints_list(Z)))
+        @test vertices_list(P) ≈ [N[5, 0], [-5, 0]]
     end
 end

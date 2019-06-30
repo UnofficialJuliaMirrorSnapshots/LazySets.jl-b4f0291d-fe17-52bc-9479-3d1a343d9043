@@ -1,3 +1,4 @@
+using LazySets: block_to_dimension_indices, substitute_blocks, get_constrained_lowdimset
 """
     overapproximate(X::S, ::Type{S}) where {S<:LazySet}
 
@@ -594,7 +595,7 @@ julia> center(Z)
   1.0
  -2.1
 
-julia> Matrix(generators(Z))
+julia> Matrix(genmat(Z))
 2×3 Array{Float64,2}:
  2.0  0.5  0.0
  6.0  0.0  0.5
@@ -645,7 +646,7 @@ julia> center(Z)
  -2.1
   0.8999999999999999
 
-julia> Matrix(generators(Z))
+julia> Matrix(genmat(Z))
 3×4 Array{Float64,2}:
  2.0  0.5  0.0  0.0
  6.0  0.0  0.5  0.0
@@ -754,7 +755,7 @@ julia> center(Z)
    5.5
  124.0
 
-julia> Matrix(generators(Z))
+julia> Matrix(genmat(Z))
 2×4 Array{Float64,2}:
  0.0  -1.0  5.0    0.0
  1.5   0.0  0.0  123.0
@@ -910,4 +911,61 @@ function _overapproximate_lm_cpa!(arr, M, cpa, overapprox_option)
     end
 
     return CartesianProductArray(arr)
+end
+
+"""
+    overapproximate(cap::Intersection{N,
+                            <:CartesianProductArray{N},
+                            <:AbstractPolyhedron{N}},
+                       ::Type{CartesianProductArray}, oa) where {N}
+
+Return the intersection of the cartesian product of a finite number of convex sets and a polyhedron.
+
+### Input
+
+ - `cap` -- Lazy intersection of cartesian product array and polyhedron
+ - `CartesianProductArray` -- type for dispatch
+ - `oa`  -- template directions
+
+### Output
+
+The intersection between `cpa` and `P` with overapproximation in each constrained block.
+
+### Algorithm
+
+The intersection is only needed to be taken in the elements of the cartesian product array (subsets of
+variables, or "blocks") which are constrained in `P`.
+Hence we first search for constrained blocks and then take the intersection of
+a lower-dimensional Cartesian product of these blocks with the projection of `Y`
+onto the variables of these blocks. (This projection is syntactic and exact.)
+The result is a `CartesianProductArray` with the same block structure as in `X`.
+However, when we decompose back our set we overapproximate during projection operation,
+therefore we need to specify overapproximation strategy (it is Hyperrectangle by default)
+"""
+function overapproximate(cap::Intersection{N,
+                                            <:CartesianProductArray{N},
+                                            <:AbstractPolyhedron{N}},
+                            ::Type{CartesianProductArray}, oa) where {N}
+
+    cpa, P = cap.X, cap.Y
+
+    cpa_low_dim, vars, block_structure, blocks = get_constrained_lowdimset(cpa, P)
+
+    low_intersection = intersection(cpa_low_dim, project(P, vars))
+
+    if isempty(low_intersection)
+        return EmptySet{N}()
+    end
+
+    decomposed_low_set = decompose(low_intersection, block_structure, oa)
+
+    return substitute_blocks(decomposed_low_set, cpa, blocks)
+end
+
+# symmetric method
+function overapproximate(cap::Intersection{N,
+                                            <:AbstractPolyhedron{N},
+                                            <:CartesianProductArray{N}},
+                            ::Type{CartesianProductArray}, oa) where {N}
+    overapproximate(Intersection(cap.Y, cap.X), oa)
 end

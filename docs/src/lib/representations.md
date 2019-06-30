@@ -61,13 +61,19 @@ Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
 * [`an_element`](@ref an_element(::AbstractCentrallySymmetricPolytope{N}) where {N<:Real})
 
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
+
 Inherited from [`AbstractHyperrectangle`](@ref):
 * [`σ`](@ref σ(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
+* [`ρ`](@ref σ(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
 * [`∈`](@ref ∈(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
 * [`norm`](@ref norm(::AbstractHyperrectangle, ::Real))
 * [`vertices_list`](@ref vertices_list(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`high`](@ref high(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`low`](@ref low(::AbstractHyperrectangle{N}) where {N<:Real})
+* [`generators`](@ref generators(::AbstractZonotope))
+* [`genmat`](@ref genmat(::AbstractZonotope))
 
 ### Manhattan norm ball
 
@@ -146,6 +152,7 @@ EmptySet
 ∅
 dim(::EmptySet)
 σ(::AbstractVector{N}, ::EmptySet{N}) where {N<:Real}
+ρ(::AbstractVector{N}, ::EmptySet{N}) where {N<:Real}
 ∈(::AbstractVector{N}, ::EmptySet{N}) where {N<:Real}
 an_element(::EmptySet)
 rand(::Type{EmptySet})
@@ -235,14 +242,20 @@ Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
 * [`an_element`](@ref an_element(::AbstractCentrallySymmetricPolytope{N}) where {N<:Real})
 
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
+
 Inherited from [`AbstractHyperrectangle`](@ref):
 * [`σ`](@ref σ(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
+* [`ρ`](@ref σ(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
 * [`∈`](@ref ∈(::AbstractVector{N}, ::AbstractHyperrectangle{N}) where {N<:Real})
 * [`norm`](@ref norm(::AbstractHyperrectangle, ::Real))
 * [`radius`](@ref radius(::AbstractHyperrectangle, ::Real))
 * [`vertices_list`](@ref vertices_list(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`high`](@ref high(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`low`](@ref low(::AbstractHyperrectangle{N}) where {N<:Real})
+* [`generators`](@ref generators(::AbstractZonotope))
+* [`genmat`](@ref genmat(::AbstractZonotope))
 
 ## Interval
 
@@ -250,6 +263,7 @@ Inherited from [`AbstractHyperrectangle`](@ref):
 Interval
 dim(::Interval)
 σ(::AbstractVector{N}, ::Interval{N}) where {N<:Real}
+ρ(::AbstractVector{N}, ::Interval{N}) where {N<:Real}
 ∈(::AbstractVector{N}, ::Interval{N}) where {N<:Real}
 ∈(::N, ::Interval{N}) where {N<:Real}
 an_element(::Interval{N}) where {N<:Real}
@@ -279,9 +293,14 @@ Inherited from [`AbstractPolytope`](@ref):
 Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
 
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
+
 Inherited from [`AbstractHyperrectangle`](@ref):
 * [`norm`](@ref norm(::AbstractHyperrectangle, ::Real))
 * [`radius`](@ref radius(::AbstractHyperrectangle, ::Real))
+* [`generators`](@ref generators(::AbstractZonotope))
+* [`genmat`](@ref genmat(::AbstractZonotope))
 
 ## Line
 
@@ -318,6 +337,8 @@ halfspace_right(::LineSegment)
 vertices_list(::LineSegment{N}) where {N<:Real}
 constraints_list(::LineSegment{N}) where {N<:Real}
 translate(::LineSegment{N}, ::AbstractVector{N}) where {N<:Real}
+generators(::LineSegment{N}) where {N<:Real}
+genmat(::LineSegment)
 plot_recipe(::LineSegment{N}, ::N=zero(N)) where {N<:Real}
 RecipesBase.apply_recipe(::Dict{Symbol,Any}, ::Union{LineSegment{N}, Interval{N}}, ::N=zero(N)) where {N<:Real}
 ```
@@ -331,6 +352,9 @@ Inherited from [`AbstractPolytope`](@ref):
 
 Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
+
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
 
 ## Polygons
 
@@ -566,6 +590,9 @@ Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`dim`](@ref dim(::AbstractCentrallySymmetricPolytope))
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
 
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
+
 Inherited from [`AbstractHyperrectangle`](@ref):
 * [`norm`](@ref norm(::AbstractHyperrectangle, ::Real))
 * [`radius`](@ref radius(::AbstractHyperrectangle, ::Real))
@@ -581,6 +608,8 @@ Inherited from [`AbstractSingleton`](@ref):
 * [`radius_hyperrectangle`](@ref radius_hyperrectangle(::AbstractSingleton{N}) where {N<:Real})
 * [`radius_hyperrectangle`](@ref radius_hyperrectangle(::AbstractSingleton{N}, ::Int) where {N<:Real})
 * [`linear_map`](@ref linear_map(::AbstractMatrix{N}, ::AbstractSingleton{N}) where {N<:Real})
+* [`generators`](@ref generators(::AbstractSingleton{N}) where {N<:Real})
+* [`genmat`](@ref genmat(::AbstractSingleton{N}) where {N<:Real})
 
 ## Universe
 
@@ -608,6 +637,7 @@ translate(::Universe{N}, ::AbstractVector{N}) where {N<:Real}
 ZeroSet
 dim(::ZeroSet)
 σ(::AbstractVector{N}, ::ZeroSet{N}) where {N<:Real}
+ρ(::AbstractVector{N}, ::ZeroSet{N}) where {N<:Real}
 ∈(::AbstractVector{N}, ::ZeroSet{N}) where {N<:Real}
 rand(::Type{ZeroSet})
 element(::ZeroSet{N}) where {N<:Real}
@@ -625,6 +655,9 @@ Inherited from [`AbstractPolytope`](@ref):
 Inherited from [`AbstractCentrallySymmetricPolytope`](@ref):
 * [`isempty`](@ref isempty(::AbstractCentrallySymmetricPolytope))
 
+Inherited from [`AbstractZonotope`](@ref):
+* [`ngens`](@ref ngens(::AbstractZonotope))
+
 Inherited from [`AbstractHyperrectangle`](@ref):
 * [`norm`](@ref norm(::AbstractHyperrectangle, ::Real))
 * [`radius`](@ref radius(::AbstractHyperrectangle, ::Real))
@@ -637,6 +670,8 @@ Inherited from [`AbstractSingleton`](@ref):
 * [`vertices_list`](@ref vertices_list(::AbstractSingleton{N}) where {N<:Real})
 * [`center`](@ref center(::AbstractSingleton{N}) where {N<:Real})
 * [`an_element`](@ref an_element(::AbstractSingleton{N}) where {N<:Real})
+* [`generators`](@ref generators(::AbstractSingleton{N}) where {N<:Real})
+* [`genmat`](@ref genmat(::AbstractSingleton{N}) where {N<:Real})
 
 ## Zonotope
 
@@ -652,7 +687,7 @@ constraints_list(::Zonotope{N}) where {N<:AbstractFloat}
 center(::Zonotope{N}) where {N<:Real}
 order(::Zonotope)
 generators(Z::Zonotope)
-minkowski_sum(::Zonotope{N}, ::Zonotope{N}) where {N<:Real}
+genmat(Z::Zonotope)
 linear_map(::AbstractMatrix{N}, ::Zonotope{N}) where {N<:Real}
 translate(::Zonotope{N}, ::AbstractVector{N}) where {N<:Real}
 scale(::Real, ::Zonotope)

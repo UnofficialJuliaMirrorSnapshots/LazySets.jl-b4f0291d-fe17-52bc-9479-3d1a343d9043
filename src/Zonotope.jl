@@ -4,7 +4,6 @@ import Base: rand,
 
 export Zonotope,
        order,
-       minkowski_sum,
        linear_map,
        scale,
        ngens,
@@ -13,7 +12,7 @@ export Zonotope,
        generators
 
 """
-    Zonotope{N<:Real} <: AbstractCentrallySymmetricPolytope{N}
+    Zonotope{N<:Real} <: AbstractZonotope{N}
 
 Type that represents a zonotope.
 
@@ -89,14 +88,14 @@ julia> Z.generators
  0.0  1.0  1.0
 ```
 """
-struct Zonotope{N<:Real} <: AbstractCentrallySymmetricPolytope{N}
+struct Zonotope{N<:Real} <: AbstractZonotope{N}
     center::AbstractVector{N}
     generators::AbstractMatrix{N}
 
     function Zonotope(center::AbstractVector{N}, generators::AbstractMatrix{N};
                       remove_zero_generators::Bool=true) where {N<:Real}
         if remove_zero_generators
-            generators = delete_zero_columns(generators)
+            generators = delete_zero_columns!(generators)
         end
         new{N}(center, generators)
     end
@@ -130,10 +129,14 @@ function center(Z::Zonotope{N})::Vector{N} where {N<:Real}
     return Z.center
 end
 
-"""
-   generators(Z::Zonotope)
 
-Return the generators of a zonotope.
+# --- AbstractZonotope interface functions ---
+
+
+"""
+   genmat(Z::Zonotope)
+
+Return the generator matrix of a zonotope.
 
 ### Input
 
@@ -141,11 +144,29 @@ Return the generators of a zonotope.
 
 ### Output
 
-The generators of the zonotope.
+A matrix where each column represents one generator of the zonotope `Z`.
 """
-function generators(Z::Zonotope)
+function genmat(Z::Zonotope)
     return Z.generators
 end
+
+"""
+    generators(Z::Zonotope)
+
+Return an iterator over the generators of a zonotope.
+
+### Input
+
+- `Z` -- zonotope
+
+### Output
+
+An iterator over the generators of `Z`.
+"""
+function generators(Z::Zonotope)
+    return generators_fallback(Z)
+end
+
 
 # --- AbstractPolytope interface functions ---
 
@@ -367,25 +388,6 @@ function order(Z::Zonotope)::Rational
 end
 
 """
-    minkowski_sum(Z1::Zonotope{N}, Z2::Zonotope{N}) where {N<:Real}
-
-Concrete Minkowski sum of a pair of zonotopes.
-
-### Input
-
-- `Z1` -- one zonotope
-- `Z2` -- another zonotope
-
-### Output
-
-The zonotope obtained by summing the centers and concatenating the generators
-of ``Z_1`` and ``Z_2``.
-"""
-function minkowski_sum(Z1::Zonotope{N}, Z2::Zonotope{N}) where {N<:Real}
-    return Zonotope(Z1.center + Z2.center, [Z1.generators Z2.generators])
-end
-
-"""
     linear_map(M::AbstractMatrix{N}, Z::Zonotope{N}) where {N<:Real}
 
 Concrete linear map of a zonotope.
@@ -578,7 +580,9 @@ Return the list of constraints defining a zonotope.
 
 ### Input
 
-- `Z` -- zonotope
+- `Z`               -- zonotope
+- `check_full_rank` -- (optional; default: `true`) flag for checking whether the
+                       generator matrix has full rank
 
 ### Output
 
@@ -591,8 +595,8 @@ The result has ``2 \\binom{p}{n-1}`` (with ``p`` being the number of generators
 and ``n`` being the ambient dimension) constraints, which is optimal under this
 assumption.
 
-If ``p < n``, we fall back to the (slower) computation based on the vertex
-representation.
+If ``p < n`` or the generator matrix is not full rank, we fall back to the
+(slower) computation based on the vertex representation.
 
 ### Algorithm
 
@@ -603,14 +607,16 @@ Reachable Sets of Hybrid Systems Using a Combination of Zonotopes and Polytopes.
 The one-dimensional case is not covered by that algorithm; we manually handle
 this case, assuming that there is only one generator.
 """
-function constraints_list(Z::Zonotope{N}) where {N<:AbstractFloat}
+function constraints_list(Z::Zonotope{N}; check_full_rank::Bool=true
+                         ) where {N<:AbstractFloat}
+    G = genmat(Z)
     p = ngens(Z)
     n = dim(Z)
-    if p < n
+
+    # use fallback implementation if order < 1 or matrix is not full rank
+    if p < n || (check_full_rank && rank(G) < n)
         return invoke(constraints_list, Tuple{Zonotope{<:Real}}, Z)
     end
-
-    G = Z.generators
 
     # special handling of 1D case
     if n == 1

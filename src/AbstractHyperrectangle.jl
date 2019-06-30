@@ -7,11 +7,13 @@ export AbstractHyperrectangle,
        low, high
 
 """
-    AbstractHyperrectangle{N<:Real} <: AbstractCentrallySymmetricPolytope{N}
+    AbstractHyperrectangle{N<:Real} <: AbstractZonotope{N}
 
 Abstract type for hyperrectangular sets.
 
 ### Notes
+
+See [`Hyperrectangle`](@ref) for a standard implementation of this interface.
 
 Every concrete `AbstractHyperrectangle` must define the following functions:
 - `radius_hyperrectangle(::AbstractHyperrectangle{N})::Vector{N}` -- return the
@@ -29,7 +31,82 @@ julia> subtypes(AbstractHyperrectangle)
  SymmetricIntervalHull
 ```
 """
-abstract type AbstractHyperrectangle{N<:Real} <: AbstractCentrallySymmetricPolytope{N}
+abstract type AbstractHyperrectangle{N<:Real} <: AbstractZonotope{N}
+end
+
+
+# --- AbstractZonotope interface functions ---
+
+
+"""
+   genmat(H::AbstractHyperrectangle)
+
+Return the generator matrix of a hyperrectangular set.
+
+### Input
+
+- `H` -- hyperrectangular set
+
+### Output
+
+A matrix where each column represents one generator of `H`.
+"""
+function genmat(H::AbstractHyperrectangle)
+    return genmat_fallback(H)
+end
+
+# iterator that wraps the generator matrix
+struct HyperrectangleGeneratorIterator{AH<:AbstractHyperrectangle}
+    H::AH
+    nonflats::Vector{Int}  # dimensions along which `H` is not flat
+    dim::Int  # total number of dimensions of `H` (stored for efficiency)
+
+    function HyperrectangleGeneratorIterator(H::AH) where {N<:Real,
+            AH<:AbstractHyperrectangle{N}}
+        n = dim(H)
+        nonflats = Vector{Int}()
+        sizehint!(nonflats, n)
+        @inbounds for i in 1:n
+            if radius_hyperrectangle(H, i) != zero(N)
+                push!(nonflats, i)
+            end
+        end
+        return new{AH}(H, nonflats, n)
+    end
+end
+
+Base.length(it::HyperrectangleGeneratorIterator) = length(it.nonflats)
+
+Base.eltype(::Type{<:HyperrectangleGeneratorIterator{<:AbstractHyperrectangle{N}}}) where {N} =
+    SingleEntryVector{N}
+
+function Base.iterate(it::HyperrectangleGeneratorIterator{<:AH},
+                      state::Int=1) where {N, AH<:AbstractHyperrectangle{N}}
+    if state > length(it.nonflats)
+        return nothing
+    end
+    i = it.nonflats[state]
+    r = radius_hyperrectangle(it.H, i)
+    g = SingleEntryVector(i, it.dim, r)
+    state += 1
+    return (g, state)
+end
+
+"""
+    generators(H::AbstractHyperrectangle)
+
+Return an iterator over the generators of a hyperrectangular set.
+
+### Input
+
+- `H` -- hyperrectangular set
+
+### Output
+
+An iterator over the generators of `H`.
+"""
+function generators(H::AbstractHyperrectangle)
+    return HyperrectangleGeneratorIterator(H)
 end
 
 
@@ -82,7 +159,7 @@ function constraints_list(H::AbstractHyperrectangle{N}) where {N<:Real}
     b, c = high(H), -low(H)
     one_N = one(N)
     for i in 1:n
-        ei = LazySets.Approximations.UnitVector(i, n, one_N)
+        ei = SingleEntryVector(i, n, one_N)
         constraints[i] = HalfSpace(ei, b[i])
         constraints[i+n] = HalfSpace(-ei, c[i])
     end
@@ -111,6 +188,35 @@ function σ(d::AbstractVector{N}, H::AbstractHyperrectangle{N}) where {N<:Real}
     @assert length(d) == dim(H) "a $(length(d))-dimensional vector is " *
                                 "incompatible with a $(dim(H))-dimensional set"
     return center(H) .+ sign_cadlag.(d) .* radius_hyperrectangle(H)
+end
+
+"""
+    ρ(d::AbstractVector{N}, H::AbstractHyperrectangle{N}) where {N<:Real}
+
+Evaluate the support function of a hyperrectangular set in a given direction.
+
+### Input
+
+- `d` -- direction
+- `H` -- hyperrectangular set
+
+### Output
+
+Evaluation of the support function in the given direction.
+"""
+function ρ(d::AbstractVector{N}, H::AbstractHyperrectangle{N}) where {N<:Real}
+    @assert length(d) == dim(H) "a $(length(d))-dimensional vector is " *
+                                "incompatible with a $(dim(H))-dimensional set"
+    c = center(H)
+    res = zero(N)
+    @inbounds for (i, di) in enumerate(d)
+        if di < zero(N)
+            res += di * (c[i] - radius_hyperrectangle(H, i))
+        elseif di > zero(N)
+            res += di * (c[i] + radius_hyperrectangle(H, i))
+        end
+    end
+    return res
 end
 
 """

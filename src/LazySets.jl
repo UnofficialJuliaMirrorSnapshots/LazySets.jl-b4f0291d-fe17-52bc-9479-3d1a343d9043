@@ -10,8 +10,14 @@ import Random
 using Random: AbstractRNG, GLOBAL_RNG, SamplerType, shuffle
 import InteractiveUtils: subtypes
 
-export Approximations
+export Arrays, Approximations
 export ×
+
+# =======================
+# Arrays auxiliary module
+# =======================
+include("Arrays/Arrays.jl")
+using .Arrays
 
 # ===================
 # Auxiliary functions
@@ -30,6 +36,7 @@ include("AbstractPolyhedron_functions.jl")
 include("AbstractPolytope.jl")
 include("AbstractCentrallySymmetric.jl")
 include("AbstractCentrallySymmetricPolytope.jl")
+include("AbstractZonotope.jl")
 include("AbstractHyperrectangle.jl")
 include("AbstractPolygon.jl")
 include("AbstractSingleton.jl")
@@ -89,7 +96,13 @@ include("Rectification.jl")
 # =============================
 # Conversions between set types
 # =============================
+include("intersection_helper.jl")
 include("convert.jl")
+
+# =====================
+# Approximations module
+# =====================
+include("Approximations/Approximations.jl")
 
 # ===========================
 # Concrete operations on sets
@@ -103,11 +116,6 @@ include("difference.jl")
 # Aliases
 # =======
 include("aliases.jl")
-
-# =====================
-# Approximations module
-# =====================
-include("Approximations/Approximations.jl")
 
 # ==========================
 # Parallel algorithms module

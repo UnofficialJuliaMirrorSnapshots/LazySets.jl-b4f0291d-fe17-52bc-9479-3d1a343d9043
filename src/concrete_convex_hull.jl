@@ -28,8 +28,9 @@ The convex hull as a list of vectors with the coordinates of the points.
 
 ### Algorithm
 
-A pre-processing step treats the cases with `0`, `1`, `2` and `3` points in any dimension.
-For `4` or more points, the algorithm used depends on the dimension.
+A pre-processing step treats the cases with up to two points for one dimension
+and up to four points for two dimensions.
+For more points in one resp. two dimensions, we use more general algorithms.
 
 For the one-dimensional case we return the minimum and maximum points, in that order.
 
@@ -114,6 +115,9 @@ function convex_hull!(points::Vector{VN};
         elseif m == 3
             # three points case in 2d
             return _three_points_2d!(points)
+        elseif m == 4
+            # four points case in 2d
+            return _four_points_2d!(points)
         else
             # general case in 2d
             return _convex_hull_2d!(points, algorithm=algorithm)
@@ -136,7 +140,6 @@ function _two_points_1d!(points)
 end
 
 function _two_points_2d!(points)
-
     # special case, see #876
     p1, p2 = points[1], points[2]
     if p1 == p2
@@ -154,12 +157,12 @@ function _three_points_2d!(points::AbstractVector{<:AbstractVector{N}}) where {N
     # Algorithm: the function takes three points and uses the formula
     #            from here: https://stackoverflow.com/questions/2122305/convex-hull-of-4-points/2122620#2122620
     #            to decide if the points are ordered in a counter-clockwise fashion or not, the result is saved 
-    #            in the 'turn' boolean, then returns the points in ordered ccw acting according to 'turn'. For the
+    #            in the 'turn' boolean, then returns the points in ccw fashion acting according to 'turn'. For the
     #            cases where the points are collinear we pass the points with the minimum and maximum first
     #            component to the function for two points in 2d(_two_points_2d), if those are equal, we do the same
     #            but with the second component.
     A, B, C = points[1], points[2], points[3]
-    turn = (A[2] - B[2]) * C[1] + (B[1] - A[1]) * C[2] + (A[1] * B[2] - B[1] * A[2])
+    turn = right_turn(A, B, C)
 
     if isapproxzero(turn)
         # ABC are collinear
@@ -183,6 +186,124 @@ function _three_points_2d!(points::AbstractVector{<:AbstractVector{N}}) where {N
         points[1], points[2], points[3] = C, B, A
     end
     # else ABC is CCW => nothing to do
+    return points
+end
+
+function _collinear_case!(points, A, B, C, D)
+    # A, B and C collinear, D is the extra point
+    if isapprox(A[1], B[1]) && isapprox(B[1], C[1]) && isapprox(C[1], A[1])
+        # points are approximately equal in their first component
+        if isapprox(A[2], B[2]) && isapprox(B[2], C[2]) && isapprox(C[2], A[2])
+            # the three points are approximately equal
+            points[1], points[2] = A, D
+            pop!(points)
+            pop!(points)
+            return _two_points_2d!(points)
+        else
+            # assign the points with max and min value in their second component to the
+            # firsts points and the extra point to the third place, then pop the point that was in the middle
+            points[1], points[2], points[3] = points[argmin([A[2], B[2], C[2]])], points[argmax([A[2], B[2], C[2]])], D
+            pop!(points)
+        end
+    else
+        # assign the points with max and min value in their first component to the
+        # firsts points and the extra point to the third place, then pop the point that was in the middle
+        points[1], points[2], points[3] = points[argmin([A[1], B[1], C[1]])], points[argmax([A[1], B[1], C[1]])], D
+        pop!(points)
+    end
+    return _three_points_2d!(points)
+end
+
+function _four_points_2d!(points::AbstractVector{<:AbstractVector{N}}) where {N<:Real}
+    A, B, C, D = points[1], points[2], points[3], points[4]
+    tri_ABC = right_turn(A, B, C)
+    tri_ABD = right_turn(A, B, D)
+    tri_BCD = right_turn(B, C, D)
+    tri_CAD = right_turn(C, A, D)
+    key = 0
+    if tri_ABC > zero(N)
+        key = key + 1000
+    end
+    if tri_ABD > zero(N)
+        key = key + 100
+    end
+    if tri_BCD > zero(N)
+        key = key + 10
+    end
+    if tri_CAD > zero(N)
+        key = key + 1
+    end
+    
+    if isapproxzero(tri_ABC)
+        return _collinear_case!(points, A, B, C, D)
+    end
+    if isapproxzero(tri_ABD)
+        return _collinear_case!(points, A, B, D, C)
+    end
+    if isapproxzero(tri_BCD)
+        return _collinear_case!(points, B, C, D, A)
+    end
+    if isapproxzero(tri_CAD)
+        return _collinear_case!(points, C, A, D, B)
+    end
+    
+    # ABC  ABD  BCD  CAD  hull
+    # ------------------------
+    #  +    +    +    +   ABC
+    #  +    +    +    -   ABCD
+    #  +    +    -    +   ABDC
+    #  +    +    -    -   ABD
+    #  +    -    +    +   ADBC
+    #  +    -    +    -   BCD
+    #  +    -    -    +   CAD
+    #  +    -    -    -   [should not happen]
+    #  -    +    +    +   [should not happen]
+    #  -    +    +    -   ACD
+    #  -    +    -    +   DCB
+    #  -    +    -    -   DACB
+    #  -    -    +    +   ADB
+    #  -    -    +    -   ACDB
+    #  -    -    -    +   ADCB
+    #  -    -    -    -   ACB
+    if key == 1111
+        points[1], points[2], points[3] = A, B, C # +    +    +    +   ABC
+        pop!(points)
+    elseif key == 1110
+        points[1], points[2], points[3], points[4] = A, B, C, D # +    +    +    -   ABCD
+    elseif key == 1101
+        points[1], points[2], points[3], points[4] = A, B, D, C #  +    +    -    +   ABDC
+    elseif key == 1100
+        points[1], points[2], points[3] = A, B, D #  +    +    -    -   ABD
+        pop!(points)
+    elseif key == 1011
+        points[1], points[2], points[3], points[4] = A, D, B, C #  +    -    +    +   ADBC
+    elseif key == 1010
+        points[1], points[2], points[3] = B, C, D #  +    -    +    -   BCD
+        pop!(points)
+    elseif key == 1001
+        points[1], points[2], points[3] = C, A, D #  +    -    -    +    CAD
+        pop!(points)
+    elseif key == 0110
+        points[1], points[2], points[3] = A, C, D #  -    +    +    -   ACD
+        pop!(points)
+    elseif key == 0101
+        points[1], points[2], points[3] = D, C, B #  -    +    -    +   DCB
+        pop!(points)
+    elseif key == 0100
+        points[1], points[2], points[3], points[4] = D, A, C, B #  -    +    -    -   DACB
+    elseif key == 0011
+        points[1], points[2], points[3] = A, D, B #  -    -    +    +   ADB
+        pop!(points)
+    elseif key == 0010
+        points[1], points[2], points[3], points[4] = A, C, D, B #  -    -    +    -   ACDB
+    elseif key == 0001
+        points[1], points[2], points[3], points[4] = A, D, C, B #  -    -    -    +   ADCB
+    elseif key == 0000
+        points[1], points[2], points[3] = A, C, B #  -    -    -    -   ACB
+        pop!(points)
+    else
+        @assert false "unexpected case in convex_hull"
+    end
     return points
 end
 
@@ -295,9 +416,8 @@ function monotone_chain!(points::Vector{VN}; sort::Bool=true
     end
 
     if sort
-        # sort the rows lexicographically (requires a two-dimensional array)
-        # points = sortrows(hcat(points...)', alg=QuickSort) # out-of-place version
-        sort!(points, by=x->(x[1], x[2]))                    # in-place version
+        # sort the points lexicographically
+        sort!(points, by=x->(x[1], x[2]))
     end
 
     zero_N = zero(N)

@@ -8,10 +8,7 @@ export AbstractPolytope,
 """
     AbstractPolytope{N<:Real} <: AbstractPolyhedron{N}
 
-Abstract type for polytopic sets, i.e., bounded sets with finitely many flat
-facets, or equivalently, bounded sets defined as an intersection of a finite
-number of half-spaces, or equivalently, bounded sets with finitely many
-vertices.
+Abstract type for compact convex polytopic sets.
 
 ### Notes
 
@@ -27,6 +24,12 @@ julia> subtypes(AbstractPolytope)
  HPolytope
  VPolytope
 ```
+
+A polytope is a bounded polyhedron (see [`AbstractPolyhedron`](@ref)).
+Polytopes are compact convex sets with either of the following equivalent
+properties:
+1. They are the intersection of a finite number of closed half-spaces.
+2. They are the convex hull of finitely many vertices.
 """
 abstract type AbstractPolytope{N<:Real} <: AbstractPolyhedron{N} end
 
@@ -93,7 +96,7 @@ function isempty(P::AbstractPolytope)::Bool
 end
 
 function default_polyhedra_backend(P, N)
-    @assert isdefined(@__MODULE__, :Polyhedra) "this function needs the package 'Polyhedra' to be loaded"
+    require(:Polyhedra; fun_name="default_polyhedra_backend")
     error("no default backend for numeric type $N")
 end
 
