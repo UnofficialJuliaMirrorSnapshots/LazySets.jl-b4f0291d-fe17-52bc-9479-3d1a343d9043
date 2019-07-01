@@ -8,8 +8,9 @@ import TaylorModels
 using TaylorModels: set_variables, TaylorModelN
 
 # non-exported helper functions
-using LazySets.Arrays: ispermutation, isinvertible, inner, iscounterclockwise,
-                       SingleEntryVector
+using LazySets: ispermutation
+using LazySets.Arrays: isinvertible, inner,
+                       is_cyclic_permutation, SingleEntryVector
 
 # conversion between numeric types
 include("to_N.jl")
@@ -47,6 +48,7 @@ end
 
 if test_suite_polyhedra || test_suite_plotting
     import Polyhedra
+    using CDDLib # for tests that require CDDLib specific backend=...
 
     # fix namespace conflicts with Polyhedra
     using LazySets: dim, HalfSpace, Interval, Line, translate

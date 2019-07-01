@@ -1,11 +1,10 @@
 export dot_zero,
        sign_cadlag,
-       ispermutation,
        remove_duplicates_sorted!,
        samedir,
        nonzero_indices,
        rectify,
-       iscounterclockwise
+       is_cyclic_permutation
 
 """
     dot_zero(x::AbstractVector{N}, y::AbstractVector{N}) where{N<:Real}
@@ -29,59 +28,6 @@ function dot_zero(x::AbstractVector{N}, y::AbstractVector{N}) where{N<:Real}
         end
     end
     return res
-end
-
-"""
-    ispermutation(u::AbstractVector{T}, v::AbstractVector)::Bool where {T}
-
-Check that two vectors contain the same elements up to reordering.
-
-### Input
-
-- `u` -- first vector
-- `v` -- second vector
-
-### Output
-
-`true` iff the vectors are identical up to reordering.
-
-### Examples
-
-```jldoctest
-julia> LazySets.ispermutation([1, 2, 2], [2, 2, 1])
-true
-
-julia> LazySets.ispermutation([1, 2, 2], [1, 1, 2])
-false
-
-```
-"""
-function ispermutation(u::AbstractVector{T}, v::AbstractVector)::Bool where {T}
-    if length(u) != length(v)
-        return false
-    end
-    occurrence_map = Dict{T, Int}()
-    has_duplicates = false
-    for e in u
-        if e ∉ v
-            return false
-        end
-        if haskey(occurrence_map, e)
-            occurrence_map[e] += 1
-            has_duplicates = true
-        else
-            occurrence_map[e] = 1
-        end
-    end
-    if has_duplicates
-        for e in v
-            if !haskey(occurrence_map, e) || occurrence_map[e] == 0
-                return false
-            end
-            occurrence_map[e] -= 1
-        end
-    end
-    return true
 end
 
 """
@@ -219,23 +165,26 @@ function rectify(x::AbstractVector{N}) where {N<:Real}
 end
 
 """
-    iscounterclockwise(result::AbstractVector,
-                       correct_expr::AbstractVector) where {N<:Real}
+    is_cyclic_permutation(candidate::AbstractVector, paragon::AbstractVector)
 
-Returns a boolean, true if the elements in `result` are ordered in
-a couter-clockwise fashion and in the same order as `correct_expr`.
+Checks if the elements in `candidate` are a cyclic permutation of the elements
+in `paragon`.
 
 ### Input
 
-- `result` -- vector
-- `correct_expr` -- paragon vector with elements in ccw order
+- `candidate` -- candidate vector
+- `paragon`   -- paragon vector
 
 ### Output
 
-A boolean indicating if the elements of `result` are in the same order as
-`correct_expr` or any of its cyclic permutations.
+A boolean indicating if the elements of `candidate` are in the same order as in
+`paragon` or any of its cyclic permutations.
 """
-function iscounterclockwise(result::AbstractVector,
-                            correct_expr::AbstractVector)
-    return any([result == circshift(correct_expr, i) for i in 0:length(result)-1])
+function is_cyclic_permutation(candidate::AbstractVector,
+                               paragon::AbstractVector)
+    m = length(candidate)
+    if length(paragon) != m
+        return false
+    end
+    return any(candidate == circshift(paragon, i) for i in 0:m-1)
 end
