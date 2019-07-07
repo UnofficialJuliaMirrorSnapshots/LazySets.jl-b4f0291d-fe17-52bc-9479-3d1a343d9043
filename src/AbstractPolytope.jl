@@ -132,7 +132,8 @@ end
 """
     minkowski_sum(P1::AbstractPolytope{N}, P2::AbstractPolytope{N};
                   [apply_convex_hull]=true,
-                  [backend]=default_polyhedra_backend(P1, N)) where {N<:Real}
+                  [backend]=default_polyhedra_backend(P1, N),
+                  [solver]=default_lp_solver(N)) where {N<:Real}
 
 Compute the Minkowski sum between two polytopes using their vertex representation.
 
@@ -145,6 +146,8 @@ Compute the Minkowski sum between two polytopes using their vertex representatio
 - `backend`           -- (optional, default: `default_polyhedra_backend(P1, N)`)
                          the backend for polyhedral computations used to
                          post-process with a convex hull
+- `solver`            -- (optional, default: `default_lp_solver(N)`) the linear programming
+                         solver used in the backend
 
 ### Output
 
@@ -153,13 +156,17 @@ the sum of all possible sums of vertices of `P1` and `P2`.
 """
 function minkowski_sum(P1::AbstractPolytope{N}, P2::AbstractPolytope{N};
                        apply_convex_hull::Bool=true,
-                       backend=nothing) where {N<:Real}
+                       backend=nothing,
+                       solver=nothing) where {N<:Real}
+
     @assert dim(P1) == dim(P2) "cannot compute the Minkowski sum between a polyotope " *
         "of dimension $(dim(P1)) and a polytope of dimension $((dim(P2)))"
-    vlist1, vlist2 = vertices_list(P1), vertices_list(P2)
+
+    vlist1 = _vertices_list(P1, backend)
+    vlist2 = _vertices_list(P2, backend)
     n, m = length(vlist1), length(vlist2)
     Vout = Vector{Vector{N}}()
-    sizehint!(Vout, n + m)
+    sizehint!(Vout, n * m)
     for vi in vlist1
         for vj in vlist2
             push!(Vout, vi + vj)
@@ -168,10 +175,16 @@ function minkowski_sum(P1::AbstractPolytope{N}, P2::AbstractPolytope{N};
     if apply_convex_hull
         if backend == nothing
             backend = default_polyhedra_backend(P1, N)
+            solver = default_lp_solver(N)
         end
-        convex_hull!(Vout, backend=backend)
+        convex_hull!(Vout, backend=backend, solver=solver)
     end
     return VPolytope(Vout)
+end
+
+# the "backend" argument is ignored, used for dispatch
+function _vertices_list(P::AbstractPolytope, backend)
+    return vertices_list(P)
 end
 
 # =============================================
@@ -190,6 +203,7 @@ using .Polyhedra: HRep, VRep,
                   hcartesianproduct, vcartesianproduct,
                   points,
                   default_library
+import JuMP, GLPK
 
 function default_polyhedra_backend(P, N::Type{<:AbstractFloat})
     return default_library(LazySets.dim(P), Float64)
@@ -198,5 +212,14 @@ end
 function default_polyhedra_backend(P, N::Type{<:Rational})
     return default_library(LazySets.dim(P), Rational{Int})
 end
+
+function default_lp_solver(N::Type{<:AbstractFloat})
+    return JuMP.with_optimizer(GLPK.Optimizer)
+end
+
+function default_lp_solver(N::Type{<:Rational})
+    return JuMP.with_optimizer(GLPK.Optimizer, method=:Exact)
+end
+
 end # quote
 end # function load_polyhedra_hpolytope()
