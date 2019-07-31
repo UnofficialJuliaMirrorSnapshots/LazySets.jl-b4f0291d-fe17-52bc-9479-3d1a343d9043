@@ -100,6 +100,7 @@ for N in [Float64, Rational{Int}, Float32]
     H2 = Hyperrectangle(low=l, high=h)
     @test H1.center ≈ H2.center
     @test H1.radius ≈ H2.radius
+    @test_throws AssertionError Hyperrectangle(low=h, high=l)
 
     # Test low and high methods for a hyperrectangle
     H = Hyperrectangle(to_N(N, [-2.1, 5.6, 0.9]), fill(to_N(N, 0.5), 3))
@@ -114,12 +115,16 @@ for N in [Float64, Rational{Int}, Float32]
 
     # membership
     H = Hyperrectangle(N[1, 1], N[2, 3])
-    @test !∈(N[-1.1, 4.1], H)
-    @test ∈(N[-1, 4], H)
+    @test N[-1.1, 4.1] ∉ H
+    @test N[-1, 4] ∈ H
 
     # an_element function
     H = Hyperrectangle(N[1, 2], N[3, 4])
     @test an_element(H) ∈ H
+
+    # isflat
+    @test isflat(Hyperrectangle(N[1, 2], N[3, 0])) &&
+          !isflat(Hyperrectangle(N[1, 2], N[3, 4]))
 
     # split
     @test ispermutation(split(H, [2, 2]),
@@ -134,15 +139,15 @@ for N in [Float64, Rational{Int}, Float32]
     H3 = Hyperrectangle(N[2, 2], N[2, 3])
     B1 = BallInf(N[2, 2.5], N(0.5))
     B2 = BallInf(N[2, 2], N(1))
-    @test !⊆(H1, H2) && ⊆(H1, H3) && ⊆(H2, H3)
+    @test H1 ⊈ H2 && H1 ⊆ H3 && H2 ⊆ H3
     subset, point = ⊆(H1, H2, true)
     @test !subset && point ∈ H1 && point ∉ H2
     subset, point = ⊆(H2, H1, true)
     @test !subset && point ∈ H2 && point ∉ H1
     subset, point = ⊆(H1, H3, true)
     @test subset
-    @test ⊆(H2, B1) && ⊆(B1, H2)
-    @test ⊆(B1, B2) && !⊆(B2, B1)
+    @test H2 ⊆ B1 && B1 ⊆ H2
+    @test B1 ⊆ B2 && B2 ⊈ B1
 
     # intersection & intersection emptiness
     H1 = Hyperrectangle(N[1, 1], N[2, 2])

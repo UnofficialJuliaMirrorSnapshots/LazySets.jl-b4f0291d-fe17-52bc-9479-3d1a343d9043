@@ -17,7 +17,7 @@ Every concrete `AbstractPolygon` must define the following functions:
 - `tohrep(::AbstractPolygon{N})::S where {S<:AbstractHPolygon{N}}` -- transform
     into H-representation
 
-```jldoctest
+```jldoctest; setup = :(using LazySets: subtypes)
 julia> subtypes(AbstractPolygon)
 2-element Array{Any,1}:
  AbstractHPolygon
@@ -111,27 +111,6 @@ This function is inspired from AGPX's answer in:
     dwx = w[1] >= zero(N) ? 1 : 0
     dwy = w[2] >= zero(N) ? 1 : 0
     return (1 - dwx) + (1 - dwy) + ((dwx & (1 - dwy)) << 1)
-end
-
-"""
-    is_right_turn(u::AbstractVector{N},
-                  v::AbstractVector{N})::Bool where {N<:Real}
-
-Determine if the acute angle defined by two 2D vectors is a right turn (< 180°
-counter-clockwise).
-
-### Input
-
-- `u` -- first 2D direction
-- `v` -- second 2D direction
-
-### Output
-
-`true` iff the two vectors constitute a right turn.
-"""
-@inline function is_right_turn(u::AbstractVector{N},
-                               v::AbstractVector{N})::Bool where {N<:Real}
-    return u[1] * v[2] - v[1] * u[2] >= zero(N)
 end
 
 """

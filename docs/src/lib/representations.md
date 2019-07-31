@@ -9,10 +9,6 @@ Depth = 3
 
 ```@meta
 CurrentModule = LazySets
-DocTestSetup = quote
-    using LazySets
-    using SparseArrays, LinearAlgebra
-end
 ```
 
 ## Balls
@@ -47,6 +43,7 @@ center(::BallInf{N}) where {N<:Real}
 radius(::BallInf, ::Real=Inf)
 radius_hyperrectangle(::BallInf{N}) where {N<:Real}
 radius_hyperrectangle(::BallInf{N}, ::Int) where {N<:Real}
+isflat(::BallInf)
 rand(::Type{BallInf})
 translate(::BallInf{N}, ::AbstractVector{N}) where {N<:Real}
 ```
@@ -184,6 +181,7 @@ dim(::HalfSpace)
 an_element(::HalfSpace{N}) where {N<:Real}
 rand(::Type{HalfSpace})
 isbounded(::HalfSpace)
+isuniversal(::HalfSpace{N}, ::Bool=false) where {N<:Real}
 isempty(::HalfSpace)
 constraints_list(::HalfSpace{N}) where {N<:Real}
 constraints_list(::AbstractMatrix{N}, ::AbstractVector{N}) where {N<:Real}
@@ -211,6 +209,7 @@ dim(::Hyperplane)
 an_element(::Hyperplane{N}) where {N<:Real}
 rand(::Type{Hyperplane})
 isbounded(::Hyperplane)
+isuniversal(::Hyperplane{N}, ::Bool=false) where {N<:Real}
 isempty(::Hyperplane)
 constrained_dimensions(::Hyperplane{N}) where {N<:Real}
 constraints_list(::Hyperplane{N}) where {N<:Real}
@@ -255,6 +254,7 @@ Inherited from [`AbstractHyperrectangle`](@ref):
 * [`vertices_list`](@ref vertices_list(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`high`](@ref high(::AbstractHyperrectangle{N}) where {N<:Real})
 * [`low`](@ref low(::AbstractHyperrectangle{N}) where {N<:Real})
+* [`isflat`](@ref isflat(::Hyperrectangle))
 * [`generators`](@ref generators(::AbstractZonotope))
 * [`genmat`](@ref genmat(::AbstractZonotope))
 
@@ -313,6 +313,7 @@ dim(::Line)
 an_element(::Line{N}) where {N<:Real}
 rand(::Type{Line})
 isbounded(::Line)
+isuniversal(::Line{N}, ::Bool=false) where {N<:Real}
 isempty(::Line)
 constrained_dimensions(::Line{N}) where {N<:Real}
 constraints_list(::Line{N}) where {N<:Real}
@@ -437,7 +438,6 @@ constraints_list(::VPolygon{N}) where {N<:Real}
 translate(::VPolygon{N}, ::AbstractVector{N}) where {N<:Real}
 remove_redundant_vertices(::VPolygon{N}; ::String="monotone_chain") where {N<:Real}
 remove_redundant_vertices!(::VPolygon{N}; ::String="monotone_chain") where {N<:Real}
-minkowski_sum(::VPolygon{N}, ::VPolygon{N}) where {N<:Real}
 ```
 Inherited from [`LazySet`](@ref):
 * [`norm`](@ref norm(::LazySet, ::Real))
@@ -488,7 +488,6 @@ tohrep(::HPoly{N}) where {N<:Real}
 tovrep(::HPoly{N}) where {N<:Real}
 isempty(::HPoly{N}, ::Bool=false) where {N<:Real}
 translate(::PT, ::AbstractVector{N}) where {N<:Real, PT<:HPoly{N}}
-cartesian_product(::HPoly{N}, ::HPoly{N}) where {N<:Real}
 polyhedron(::HPoly{N}) where {N<:Real}
 remove_redundant_constraints(::PT) where {N<:Real, PT<:HPoly{N}}
 remove_redundant_constraints!(::HPoly{N}) where {N<:Real}
@@ -524,6 +523,7 @@ The following methods are specific for `HPolyhedron`.
 ```@docs
 rand(::Type{HPolyhedron})
 isbounded(::HPolyhedron)
+isuniversal(::HPolyhedron{N}, ::Bool=false) where {N<:Real}
 vertices_list(::HPolyhedron{N}) where {N<:Real}
 singleton_list(::HPolyhedron{N}) where {N<:Real}
 ```
@@ -542,7 +542,6 @@ remove_redundant_vertices(::VPolytope{N}) where {N<:Real}
 constraints_list(::VPolytope{N}) where {N<:Real}
 tohrep(::VPolytope{N}) where {N<:Real}
 tovrep(::VPolytope)
-cartesian_product(::VPolytope{N}, ::VPolytope{N}) where N
 polyhedron(::VPolytope{N}) where {N<:Real}
 linear_map(::AbstractMatrix{N}, ::VPolytope{N}) where {N<:Real}
 ```
@@ -568,7 +567,6 @@ polynomial_order(pz::PolynomialZonotope)
 order(::PolynomialZonotope)
 linear_map(::Matrix, ::PolynomialZonotope)
 scale(::Number, ::PolynomialZonotope)
-minkowski_sum(::PolynomialZonotope, ::Zonotope)
 ```
 
 ## Singleton
@@ -624,6 +622,7 @@ rand(::Type{Universe})
 an_element(::Universe{N}) where {N<:Real}
 isempty(::Universe)
 isbounded(::Universe)
+isuniversal(::Universe{N}, ::Bool=false) where {N<:Real}
 norm(::Universe, ::Real=Inf)
 radius(::Universe, ::Real=Inf)
 diameter(::Universe, ::Real=Inf)

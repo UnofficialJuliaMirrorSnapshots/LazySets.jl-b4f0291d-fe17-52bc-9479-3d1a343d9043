@@ -37,9 +37,7 @@ Every concrete `LazySet` must define the following functions:
 
 The subtypes of `LazySet` (including abstract interfaces):
 
-```jldoctest
-julia> using LazySets: subtypes
-
+```jldoctest; setup = :(using LazySets: subtypes)
 julia> subtypes(LazySet, false)
 17-element Array{Any,1}:
  AbstractCentrallySymmetric
@@ -63,8 +61,8 @@ julia> subtypes(LazySet, false)
 
 If we only consider *concrete* subtypes, then:
 
-```jldoctest
-julia> LazySets.subtypes(LazySet, true)
+```jldoctest; setup = :(using LazySets: subtypes)
+julia> subtypes(LazySet, true)
 37-element Array{Type,1}:
  Ball1
  Ball2
@@ -475,14 +473,7 @@ This is a naive fallback implementation.
 """
 function isuniversal(X::LazySet{N}, witness::Bool=false
                     )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
-    if X isa Universe
-        result = true
-    elseif X isa HPolyhedron
-        # the polyhedron is universal iff there is no constraint at all
-        result = isempty(constraints_list(X))
-    elseif X isa HalfSpace || X isa Hyperplane || X isa Line
-        result = false
-    elseif isbounded(X)
+    if isbounded(X)
         result = false
     else
         error("cannot determine universality of the set")

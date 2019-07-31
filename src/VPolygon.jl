@@ -241,27 +241,72 @@ If the direction has norm zero, the first vertex is returned.
 
 ### Algorithm
 
-This implementation performs a brute-force search, comparing the projection of
-each vector along the given direction.
-It runs in ``O(n)`` where ``n`` is the number of vertices.
+This implementation uses a binary search algorithm when the polygon has more
+than ten vertices and a brute-force search when it has ten or less.
+For the brute-force search, it compares the projection of
+each vector along the given direction and runs in ``O(n)`` where 
+``n`` is the number of vertices.
+For the binary search the algorithm runs in ``O(log n)``.
+We follow [this implementation](http://geomalgorithms.com/a14-_extreme_pts.html#polyMax_2D())
+based on an algorithm described in [1].
 
-### Notes
-
-For arbitrary points without structure this is the best one can do.
-However, a more efficient approach can be used if the vertices of the polygon
-have been sorted in counter-clockwise fashion.
-In that case a binary search algorithm can be used that runs in ``O(\\log n)``.
-See issue [#40](https://github.com/JuliaReach/LazySets.jl/issues/40).
+[1] Joseph O'Rourke, Computational Geometry in C (2nd Edition)
 """
 function σ(d::AbstractVector{N}, P::VPolygon{N}) where {N<:Real}
     @assert !isempty(P.vertices) "the polygon has no vertices"
+    binary_or_brute_force = 10;
+    if length(P.vertices) > binary_or_brute_force
+        P.vertices[_binary_support_vector(d, P)]
+    else
+        P.vertices[_brute_force_support_vector(d, P)]
+    end
+end
+
+function _brute_force_support_vector(d::AbstractVector{N}, P::VPolygon{N}) where {N <: Real}
     i_max = 1
     @inbounds for i in 2:length(P.vertices)
         if dot(d, P.vertices[i] - P.vertices[i_max]) > zero(N)
             i_max = i
         end
     end
-    return P.vertices[i_max]
+    return i_max
+end
+
+function _binary_support_vector(d::AbstractVector{N}, P::VPolygon{N}) where {N <: Real}
+    n = length(P.vertices)
+    @assert n > 2
+    push!(P.vertices, P.vertices[1]) # add extra vertice on the end equal to the first
+    a = 1; b = n + 1 # start chain = [1,n+1] with P.vertices[n+1]=P.vertices[1]
+    A = P.vertices[2] - P.vertices[1]
+    upA = _up(d, A)
+    # test if P.vertices[0] is a local maximum
+    if (!upA && !_above(d, P.vertices[n], P.vertices[1])) # P.vertices[1] is the maximum
+        pop!(P.vertices) # remove the extra point added
+        return 1
+    end
+    while true
+        c = round(Int, (a + b) / 2) # midpoint of [a,b], and 1<c<n+1
+        C = P.vertices[c + 1] - P.vertices[c]
+        upC = _up(d, C)
+        if (!upC && !_above(d, P.vertices[c - 1], P.vertices[c])) # P.vertices[c] is a local maximum
+            pop!(P.vertices) # remove the extra point added
+            return c # thus it is the maximum
+        end
+        # no max yet, so continue with the binary search
+        # pick one of the two subchains [a,c] or [c,b]
+        if (upA && upC && !_above(d, P.vertices[a], P.vertices[c])) ||
+        (!upA && (upC || (!upC && _above(d, P.vertices[a], P.vertices[c]))))
+            a = c
+            A = C
+            upA = upC
+        else
+            b = c
+        end
+        if (b <= a + 1) # the chain is impossibly small
+            pop!(P.vertices) # remove the extra point added
+            throw(ErrorException("something went wrong")) # return an error
+        end
+    end
 end
 
 """
@@ -309,16 +354,16 @@ edge, using the dot product.
 julia> P = VPolygon([[2.0, 3.0], [3.0, 1.0], [5.0, 1.0], [4.0, 5.0]];
                     apply_convex_hull=false);
 
-julia> ∈([4.5, 3.1], P)
+julia> [4.5, 3.1] ∈ P
 false
-julia> ∈([4.5, 3.0], P)
+julia> [4.5, 3.0] ∈ P
 true
-julia> ∈([4.4, 3.4], P)  #  point lies on the edge -> floating point error
+julia> [4.4, 3.4] ∈ P  #  point lies on the edge -> floating-point error
 false
 julia> P = VPolygon([[2//1, 3//1], [3//1, 1//1], [5//1, 1//1], [4//1, 5//1]];
                      apply_convex_hull=false);
 
-julia> ∈([44//10, 34//10], P)  #  with rational numbers the answer is correct
+julia> [44//10, 34//10] ∈ P  #  with rational numbers the answer is correct
 true
 ```
 """
@@ -332,12 +377,11 @@ function ∈(x::AbstractVector{N}, P::VPolygon{N})::Bool where {N<:Real}
         return x == P.vertices[1]
     end
 
-    zero_N = zero(N)
-    if right_turn(P.vertices[1], x, P.vertices[end]) < zero_N
+    if !is_right_turn(P.vertices[1], x, P.vertices[end])
         return false
     end
     for i in 2:length(P.vertices)
-        if right_turn(P.vertices[i], x, P.vertices[i-1]) < zero_N
+        if !is_right_turn(P.vertices[i], x, P.vertices[i-1])
             return false
         end
     end
@@ -585,10 +629,8 @@ function minkowski_sum(P::VPolygon{N}, Q::VPolygon{N}) where {N<:Real}
     mP = length(vlistP)
     mQ = length(vlistQ)
     i = 1
-    σP = σ(N[1, 0], P)
-    σQ = σ(N[1, 0], Q)
-    k = findfirst(==(σP), vlistP)
-    j = findfirst(==(σQ), vlistQ)
+    k = _binary_support_vector(N[1, 0], P)
+    j = _binary_support_vector(N[1, 0], Q)
     R = Vector{Vector{N}}(undef, mP+mQ)
     fill!(R, N[0, 0])
     while i <= size(R, 1)

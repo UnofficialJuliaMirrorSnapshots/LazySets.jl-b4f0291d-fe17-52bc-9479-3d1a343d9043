@@ -13,7 +13,7 @@ of a `Hyperplane`).
 
 ### Fields
 
-- `a` -- normal direction
+- `a` -- normal direction (non-zero)
 - `b` -- constraint
 
 ### Examples
@@ -32,7 +32,7 @@ struct Line{N<:Real, VN<:AbstractVector{N}} <: AbstractPolyhedron{N}
     # default constructor with length constraint
     function Line{N, VN}(a::VN, b::N) where {N<:Real, VN<:AbstractVector{N}}
         @assert length(a) == 2 "lines must be two-dimensional"
-        @assert a != zeros(N, 2) "the normal vector of a line must not be zero"
+        @assert !iszero(a) "a line needs a non-zero normal vector"
         return new{N, VN}(a, b)
     end
 end
@@ -160,6 +160,35 @@ Determine whether a line is bounded.
 """
 function isbounded(::Line)::Bool
     return false
+end
+
+"""
+    isuniversal(L::Line{N}, [witness]::Bool=false
+               )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+
+Check whether a line is universal.
+
+### Input
+
+- `P`       -- line
+- `witness` -- (optional, default: `false`) compute a witness if activated
+
+### Output
+
+* If `witness` option is deactivated: `false`
+* If `witness` option is activated: `(false, v)` where ``v ∉ P``
+
+### Algorithm
+
+Witness production falls back to `isuniversal(::Hyperplane)`.
+"""
+function isuniversal(L::Line{N}, witness::Bool=false
+                    )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+    if witness
+        return isuniversal(Hyperplane(L.a, L.b), true)
+    else
+        return false
+    end
 end
 
 """

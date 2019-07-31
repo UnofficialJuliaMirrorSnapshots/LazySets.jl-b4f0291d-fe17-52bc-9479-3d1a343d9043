@@ -62,8 +62,8 @@ for N in [Float64, Rational{Int}, Float32]
 
     # membership
     b = BallInf(N[1, 1], N(1))
-    @test !∈(N[0.5, -0.5], b)
-    @test ∈(N[0.5, 1.5], b)
+    @test N[0.5, -0.5] ∉ b
+    @test N[0.5, 1.5] ∈ b
 
     # an_element function
     b = BallInf(N[1, 2], N(3))
@@ -78,6 +78,9 @@ for N in [Float64, Rational{Int}, Float32]
     b = BallInf(N[1, 2], N(1))
     @test high(b) == N[2, 3]
     @test low(b) == N[0, 1]
+
+    # isflat
+    @test !isflat(BallInf(N[1, 1], N(1))) && isflat(BallInf(N[1, 1], N(0)))
 
     # split
     b = BallInf(N[3, 3], N(1))

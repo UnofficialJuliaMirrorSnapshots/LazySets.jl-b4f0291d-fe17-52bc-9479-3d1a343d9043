@@ -14,7 +14,6 @@ export HPolyhedron,
        vertices_list,
        singleton_list,
        isempty,
-       linear_map,
        remove_redundant_constraints,
        remove_redundant_constraints!,
        constrained_dimensions
@@ -209,6 +208,40 @@ function isbounded(P::HPolyhedron)::Bool
         return false
     end
     return isbounded_unit_dimensions(P)
+end
+
+"""
+    isuniversal(P::HPolyhedron{N}, [witness]::Bool=false
+               )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+
+Check whether a polyhedron is universal.
+
+### Input
+
+- `P`       -- polyhedron
+- `witness` -- (optional, default: `false`) compute a witness if activated
+
+### Output
+
+* If `witness` option is deactivated: `true` iff ``P`` is universal
+* If `witness` option is activated:
+  * `(true, [])` iff ``P`` is universal
+  * `(false, v)` iff ``P`` is not universal and ``v ∉ P``
+
+### Algorithm
+
+`P` is universal iff it has no constraints.
+
+A witness is produced using `isuniversal(H)` where `H` is the first linear
+constraint of `P`.
+"""
+function isuniversal(P::HPolyhedron{N}, witness::Bool=false
+                    )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+    if isempty(P.constraints)
+        return witness ? (true, N[]) : true
+    else
+        return witness ? isuniversal(P.constraints[1], true) : false
+    end
 end
 
 """
@@ -429,7 +462,7 @@ end
 
 """
     convex_hull(P1::HPoly{N}, P2::HPoly{N};
-               [backend]=default_polyhedra_backend(P1, N)) where {N}
+               [backend]=default_polyhedra_backend(P1, N)) where {N<:Real}
 
 Compute the convex hull of the set union of two polyhedra in H-representation.
 
@@ -455,10 +488,10 @@ For further information on the supported backends see
 """
 function convex_hull(P1::HPoly{N},
                      P2::HPoly{N};
-                     backend=default_polyhedra_backend(P1, N)) where {N}
+                     backend=default_polyhedra_backend(P1, N)) where {N<:Real}
     require(:Polyhedra; fun_name="convex_hull")
-    Pch = convexhull(polyhedron(P1; backend=backend),
-                     polyhedron(P2; backend=backend))
+    Pch = Polyhedra.convexhull(polyhedron(P1; backend=backend),
+                               polyhedron(P2; backend=backend))
     removehredundancy!(Pch)
     return convert(typeof(P1), Pch)
 end
@@ -491,8 +524,8 @@ function cartesian_product(P1::HPoly{N},
                            backend=default_polyhedra_backend(P1, N)
                           ) where {N<:Real}
     require(:Polyhedra; fun_name="`cartesian_product")
-    Pcp = hcartesianproduct(polyhedron(P1; backend=backend),
-                            polyhedron(P2; backend=backend))
+    Pcp = Polyhedra.hcartesianproduct(polyhedron(P1; backend=backend),
+                                      polyhedron(P2; backend=backend))
     return convert(typeof(P1), Pcp)
 end
 

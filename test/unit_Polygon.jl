@@ -1,3 +1,5 @@
+using LazySets: _isapprox
+
 for N in [Float64, Float32, Rational{Int}]
     # random polygons
     rand(HPolygon)
@@ -103,13 +105,13 @@ for N in [Float64, Float32, Rational{Int}]
     l1 = LinearMap(N[1 0; 0 1], b1)
     l2 = LinearMap(N[1 0; 0 1], b2)
     subset, point = ⊆(p, b1, true)
-    @test !subset && point ∈ p && !(point ∈ b1)
+    @test !subset && point ∈ p && point ∉ b1
     subset, point = ⊆(p, l1, true)
-    @test !subset && point ∈ p && !(point ∈ l1)
+    @test !subset && point ∈ p && point ∉ l1
     subset, point = ⊆(p, b2, true)
-    @test subset && ⊆(p, b2) && point == N[]
+    @test subset && p ⊆ b2 && point == N[]
     subset, point = ⊆(p, l2, true)
-    @test subset && ⊆(p, l2) && point == N[]
+    @test subset && p ⊆ l2 && point == N[]
     @test p ⊆ p
 
     # HPolygon/HPolygonOpt tests
@@ -135,18 +137,18 @@ for N in [Float64, Float32, Rational{Int}]
         @test σ(d, hp, linear_search=true) == σ(d, hp, linear_search=false)
 
         # membership
-        @test ∈(N[0, 0], hp)
-        @test ∈(N[4, 2], hp)
-        @test ∈(N[2, 4], hp)
-        @test ∈(N[-1, 1], hp)
-        @test ∈(N[2, 3], hp)
-        @test ∈(N[1, 1], hp)
-        @test ∈(N[3, 2], hp)
-        @test ∈(N[5 / 4, 7 / 4], hp)
-        @test !∈(N[4, 1], hp)
-        @test !∈(N[5, 2], hp)
-        @test !∈(N[3, 4], hp)
-        @test !∈(N[-1, 5], hp)
+        @test N[0, 0] ∈ hp
+        @test N[4, 2] ∈ hp
+        @test N[2, 4] ∈ hp
+        @test N[-1, 1] ∈ hp
+        @test N[2, 3] ∈ hp
+        @test N[1, 1] ∈ hp
+        @test N[3, 2] ∈ hp
+        @test N[5 / 4, 7 / 4] ∈ hp
+        @test N[4, 1] ∉ hp
+        @test N[5, 2] ∉ hp
+        @test N[3, 4] ∉ hp
+        @test N[-1, 5] ∉ hp
 
         # an_element function
         @test an_element(hp) ∈ hp
@@ -169,7 +171,7 @@ for N in [Float64, Float32, Rational{Int}]
         @test translate(hp, N[1, 2]) == typeof(hp)(
             [HalfSpace(N[2, 2], N(18)), HalfSpace(N[-3, 3], N(9)),
              HalfSpace(N[-1, -1], N(-3)), HalfSpace(N[2, -4], N(-6))])
-        
+
         # test for concrete minkowski sum
         A = [N[4, 0], N[6, 2], N[4, 4]]
         B = [N[-2, -2], N[2, 0], N[2, 2], N[-2, 4]]
@@ -179,7 +181,7 @@ for N in [Float64, Float32, Rational{Int}]
         PQ = minkowski_sum(P, Q)
         @test is_cyclic_permutation(PQ.vertices, [N[2, -2], N[6, 0], N[8, 2],
                                                 N[8, 4], N[6, 6], N[2, 8]])
-        
+
         # test for different starting points in vertices_list of minkowski sum
         P = VPolygon([N[4, 0], N[6, 2], N[4, 4]])
         P2 = VPolygon([N[4, 4], N[4, 0], N[6, 2]])
@@ -271,20 +273,10 @@ for N in [Float64, Float32, Rational{Int}]
     vp = VPolygon(points, algorithm="monotone_chain_sorted")
     @test vertices_list(vp) == to_N(N, [[0.1, 0.3], [0.2, 0.1], [0.9, 0.2], [0.4, 0.6]])
 
-    # test support vector of a VPolygon
-    d = N[1, 0]
-    @test σ(d, vp) == points[5]
-    d = N[0, 1]
-    @test σ(d, vp) == points[4]
-    d = N[-1, 0]
-    @test σ(d, vp) == points[1]
-    d = N[0, -1]
-    @test σ(d, vp) == points[2]
-
     # test that #83 is fixed
     v = VPolygon([N[2, 3]])
     @test N[2, 3] ∈ v
-    @test !(N[3, 2] ∈ v)
+    @test N[3, 2] ∉ v
     v = VPolygon([N[2, 3], to_N(N, [-1, -3.4])])
     @test to_N(N, [-1, -3.4]) ∈ v
 
@@ -307,11 +299,11 @@ for N in [Float64, Float32, Rational{Int}]
     p1 = VPolygon([N[0, 0], N[2, 0]])
     p2 = VPolygon([N[1, 0]])
     b = BallInf(N[2, 0], N(1))
-    @test ⊆(p2, p1) && ⊆(p2, p1, true)[1]
+    @test p2 ⊆ p1 && ⊆(p2, p1, true)[1]
     subset, witness = ⊆(p1, b, true)
-    @test !⊆(p1, b) && !subset && witness ∈ p1 && witness ∉ b
+    @test p1 ⊈ b && !subset && witness ∈ p1 && witness ∉ b
     subset, witness = ⊆(p2, b, true)
-    @test ⊆(p2, b) && subset
+    @test p2 ⊆ b && subset
 
     v1 = N[1, 0]
     v2 = N[1, 1]
@@ -390,6 +382,27 @@ function same_constraints(v::Vector{<:LinearConstraint{N}})::Bool where N<:Real
 end
 
 for N in [Float64, Float32]
+    # test support vector of a VPolygon
+    points = to_N(N, [[0.1, 0.3], [0.2, 0.1], [0.4, 0.3], [0.4, 0.6], [0.9, 0.2]])
+    vp = VPolygon(points, algorithm="monotone_chain_sorted")
+    d = N[1, 0]
+    @test σ(d, vp) == points[5]
+    d = N[0, 1]
+    @test σ(d, vp) == points[4]
+    d = N[-1, 0]
+    @test σ(d, vp) == points[1]
+    d = N[0, -1]
+    @test σ(d, vp) == points[2]
+    dirs = to_N(N,
+        [[1, 0], [1, 0.5], [0.5, 0.5], [0.5, 1], [0, 1], [-0.5, 1], [-0.5, 0.5],
+        [-1, 0.5], [-1, 0], [1, -0.5], [0.5, -0.5], [0.5, -1], [0, -1],
+        [-0.5, -1], [-0.5, -0.5], [-1, -0.5]])
+    B = Ball2(zeros(N, 2), N(1))
+    P = HPolygon([HalfSpace(di, ρ(di, B)) for di in dirs])
+    vlistP = vertices_list(P)
+    V = VPolygon(vlistP)
+    all(x -> _isapprox(σ(x, V), x), vlistP)
+
     # test adding constraints, with linear and binary search
     p1 = HPolygon{N}()
     p2 = HPolygon{N}()

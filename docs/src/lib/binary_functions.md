@@ -9,9 +9,13 @@ Depth = 3
 
 ```@meta
 CurrentModule = LazySets
-DocTestSetup = quote
-    using LazySets
-end
+```
+
+## Cartesian product
+
+```@docs
+cartesian_product(::HPoly{N}, ::HPoly{N}) where {N<:Real}
+cartesian_product(::VPolytope{N}, ::VPolytope{N}) where N
 ```
 
 ## Check for emptiness of intersection
@@ -29,8 +33,7 @@ is_intersection_empty(::LineSegment{N}, ::LineSegment{N}, ::Bool=false) where {N
 is_intersection_empty(::LazySet{N}, ::Union{Hyperplane{N}, Line{N}}, ::Bool=false) where {N<:Real}
 is_intersection_empty(::LazySet{N}, ::HalfSpace{N}, ::Bool=false) where {N<:Real}
 is_intersection_empty(::HalfSpace{N}, ::HalfSpace{N}, ::Bool=false) where {N<:Real}
-is_intersection_empty(::Union{HPolyhedron{N}, AbstractPolytope{N}}, ::LazySet{N}, ::Bool=false) where {N<:Real}
-is_intersection_empty(::Union{HPolyhedron{N}, AbstractPolytope{N}}, ::Union{HPolyhedron{N}, AbstractPolytope{N}}, ::Bool=false) where {N<:Real}
+is_intersection_empty(::AbstractPolyhedron{N}, ::LazySet{N}, ::Bool=false) where {N<:Real}
 is_intersection_empty(::UnionSet{N}, ::LazySet{N}, ::Bool=false) where {N<:Real}
 is_intersection_empty(::UnionSetArray{N}, ::LazySet{N}, ::Bool=false) where {N<:Real}
 is_intersection_empty(::Universe{N}, ::LazySet{N}, ::Bool=false) where {N<:Real}
@@ -66,7 +69,17 @@ intersection(::UnionSet{N}, ::LazySet{N}) where {N<:Real}
 intersection(::UnionSetArray{N}, ::LazySet{N}) where {N<:Real}
 intersection(::Universe{N}, ::LazySet{N}) where {N<:Real}
 intersection(::AbstractPolyhedron{N}, ::ResetMap{N}) where {N<:Real}
-intersection(X::CartesianProductArray{N}, Y::CartesianProductArray{N}) where {N<:Real}
+intersection(::CartesianProductArray{N}, ::CartesianProductArray{N}) where {N<:Real}
+intersection(::LinearMap{N}, ::LazySet{N}) where {N<:Real}
+```
+
+## Minkowski sum
+
+```@docs
+minkowski_sum(::AbstractPolytope{N}, ::AbstractPolytope{N}) where {N<:Real}
+minkowski_sum(::AbstractZonotope{N}, ::AbstractZonotope{N}) where {N<:Real}
+minkowski_sum(::VPolygon{N}, ::VPolygon{N}) where {N<:Real}
+minkowski_sum(::PolynomialZonotope, ::Zonotope)
 ```
 
 ## Subset check

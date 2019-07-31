@@ -17,7 +17,7 @@ Every concrete `AbstractPolytope` must define the following functions:
 - `vertices_list(::AbstractPolytope{N})::Vector{Vector{N}}` -- return a list of
     all vertices
 
-```jldoctest
+```jldoctest; setup = :(using LazySets: subtypes)
 julia> subtypes(AbstractPolytope)
 4-element Array{Any,1}:
  AbstractCentrallySymmetricPolytope
@@ -186,40 +186,3 @@ end
 function _vertices_list(P::AbstractPolytope, backend)
     return vertices_list(P)
 end
-
-# =============================================
-# Functions that require Polyhedra
-# =============================================
-
-function load_polyhedra_abstractpolytope() # function to be loaded by Requires
-return quote
-import .Polyhedra: polyhedron
-export polyhedron
-using .Polyhedra: HRep, VRep,
-                  removehredundancy!, removevredundancy!,
-                  hreps, vreps,
-                  intersect,
-                  convexhull,
-                  hcartesianproduct, vcartesianproduct,
-                  points,
-                  default_library
-import JuMP, GLPK
-
-function default_polyhedra_backend(P, N::Type{<:AbstractFloat})
-    return default_library(LazySets.dim(P), Float64)
-end
-
-function default_polyhedra_backend(P, N::Type{<:Rational})
-    return default_library(LazySets.dim(P), Rational{Int})
-end
-
-function default_lp_solver(N::Type{<:AbstractFloat})
-    return JuMP.with_optimizer(GLPK.Optimizer)
-end
-
-function default_lp_solver(N::Type{<:Rational})
-    return JuMP.with_optimizer(GLPK.Optimizer, method=:Exact)
-end
-
-end # quote
-end # function load_polyhedra_hpolytope()

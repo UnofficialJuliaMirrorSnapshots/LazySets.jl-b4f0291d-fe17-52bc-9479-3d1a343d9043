@@ -107,6 +107,8 @@ The lazy linear map of a translation is again a translation, since the following
 simplification rule applies: ``M * (X⊕v) = (M*X) ⊕ (M*v)``:
 
 ```jldoctest translation
+julia> using LinearAlgebra: I
+
 julia> Q = Matrix(2.0I, 3, 3) * tr;
 
 julia> Q isa Translation && Q.v == 2 * tr.v
@@ -130,9 +132,9 @@ julia> constraints_list(tr)
  HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([1.0, 0.0, 0.0], 5.0)
  HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([0.0, 1.0, 0.0], 3.0)
  HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([0.0, 0.0, 1.0], 3.0)
- HalfSpace{Float64,Array{Float64,1}}([-1.0, -0.0, -0.0], -3.0)
- HalfSpace{Float64,Array{Float64,1}}([-0.0, -1.0, -0.0], -1.0)
- HalfSpace{Float64,Array{Float64,1}}([-0.0, -0.0, -1.0], -1.0)
+ HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([-1.0, 0.0, 0.0], -3.0)
+ HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([0.0, -1.0, 0.0], -1.0)
+ HalfSpace{Float64,LazySets.Arrays.SingleEntryVector{Float64}}([0.0, 0.0, -1.0], -1.0)
 ```
 """
 struct Translation{N<:Real, VN<:AbstractVector{N}, S<:LazySet{N}} <: LazySet{N}
@@ -363,7 +365,7 @@ This implementation relies on the set membership function for the wrapped set
 `tr.X`, since ``x ∈ X ⊕ v`` iff ``x - v ∈ X``.
 """
 function ∈(x::AbstractVector{N}, tr::Translation{N})::Bool where {N<:Real}
-    return ∈(x - tr.v, tr.X)
+    return x - tr.v ∈ tr.X
 end
 
 """

@@ -12,7 +12,7 @@ Type that represents a hyperplane of the form ``a⋅x = b``.
 
 ### Fields
 
-- `a` -- normal direction
+- `a` -- normal direction (non-zero)
 - `b` -- constraint
 
 ### Examples
@@ -27,7 +27,15 @@ Hyperplane{Float64}([0.0, 1.0], 0.0)
 struct Hyperplane{N<:Real} <: AbstractPolyhedron{N}
     a::AbstractVector{N}
     b::N
+
+    function Hyperplane{N}(a::AbstractVector{N}, b::N) where {N<:Real}
+        @assert !iszero(a) "a hyperplane needs a non-zero normal vector"
+        return new{N}(a, b)
+    end
 end
+
+# convenience constructor without type parameter
+Hyperplane(a::AbstractVector{N}, b::N) where {N<:Real} = Hyperplane{N}(a, b)
 
 
 # --- polyhedron interface functions ---
@@ -133,6 +141,37 @@ Determine whether a hyperplane is bounded.
 """
 function isbounded(::Hyperplane)::Bool
     return false
+end
+
+"""
+    isuniversal(hp::Hyperplane{N}, [witness]::Bool=false
+               )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+
+Check whether a hyperplane is universal.
+
+### Input
+
+- `P`       -- hyperplane
+- `witness` -- (optional, default: `false`) compute a witness if activated
+
+### Output
+
+* If `witness` option is deactivated: `false`
+* If `witness` option is activated: `(false, v)` where ``v ∉ P``
+
+### Algorithm
+
+A witness is produced by adding the normal vector to an element on the
+hyperplane.
+"""
+function isuniversal(hp::Hyperplane{N}, witness::Bool=false
+                    )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+    if witness
+        v = an_element(hp) + hp.a
+        return (false, v)
+    else
+        return false
+    end
 end
 
 """

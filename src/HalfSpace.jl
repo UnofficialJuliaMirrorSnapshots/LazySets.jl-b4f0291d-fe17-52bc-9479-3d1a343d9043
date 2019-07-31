@@ -15,7 +15,7 @@ Type that represents a (closed) half-space of the form ``a⋅x ≤ b``.
 
 ### Fields
 
-- `a` -- normal direction
+- `a` -- normal direction (non-zero)
 - `b` -- constraint
 
 ### Examples
@@ -30,7 +30,17 @@ HalfSpace{Float64,Array{Float64,1}}([0.0, -1.0], 0.0)
 struct HalfSpace{N<:Real, VN<:AbstractVector{N}} <: AbstractPolyhedron{N}
     a::VN
     b::N
+
+    function HalfSpace{N, VN}(a::VN, b::N
+                             ) where {N<:Real, VN<:AbstractVector{N}}
+        @assert !iszero(a) "a half-space needs a non-zero normal vector"
+        return new{N, VN}(a, b)
+    end
 end
+
+# convenience constructor without type parameter
+HalfSpace(a::VN, b::N) where {N<:Real, VN<:AbstractVector{N}} =
+    HalfSpace{N, VN}(a, b)
 
 """
     LinearConstraint
@@ -123,6 +133,35 @@ Determine whether a half-space is bounded.
 """
 function isbounded(::HalfSpace)::Bool
     return false
+end
+
+"""
+    isuniversal(hs::HalfSpace{N}, [witness]::Bool=false
+               )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+
+Check whether a half-space is universal.
+
+### Input
+
+- `P`       -- half-space
+- `witness` -- (optional, default: `false`) compute a witness if activated
+
+### Output
+
+* If `witness` option is deactivated: `false`
+* If `witness` option is activated: `(false, v)` where ``v ∉ P``
+
+### Algorithm
+
+Witness production falls back to `isuniversal(::Hyperplane)`.
+"""
+function isuniversal(hs::HalfSpace{N}, witness::Bool=false
+                    )::Union{Bool, Tuple{Bool, Vector{N}}} where {N<:Real}
+    if witness
+        return isuniversal(Hyperplane(hs.a, hs.b), true)
+    else
+        return false
+    end
 end
 
 """

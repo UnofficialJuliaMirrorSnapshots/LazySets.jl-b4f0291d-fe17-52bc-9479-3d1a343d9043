@@ -7,6 +7,9 @@ for N in [Float64, Rational{Int}, Float32]
     b = N(5)
     hp = Hyperplane(a, b)
 
+    # corner case: zero normal vector
+    @test_throws AssertionError Hyperplane(N[0, 0], N(1))
+
     # dimension
     @test dim(hp) == 3
 
@@ -42,6 +45,11 @@ for N in [Float64, Rational{Int}, Float32]
     # boundedness
     @test !isbounded(hp)
 
+    # universality
+    @test !isuniversal(hp)
+    res, w = isuniversal(hp, true)
+    @test !res && w ∉ hp
+
     # isempty
     @test !isempty(hp)
 
@@ -65,6 +73,13 @@ for N in [Float64, Rational{Int}, Float32]
 
     # translation
     @test translate(hp, N[1, 2, 3]) == Hyperplane(ones(N, 3), N(11))
+
+    # intersection emptiness
+    u = Universe{N}(3)
+    res, v = is_intersection_empty(u, hp, true)
+    @test !is_intersection_empty(u, hp) && !res && v ∈ hp && v ∈ u
+    res, v = is_intersection_empty(hp, u, true)
+    @test !is_intersection_empty(hp, u) && !res && v ∈ hp && v ∈ u
 end
 
 # Polyhedra tests that only work with Float64
