@@ -214,7 +214,7 @@ for N in [Float64, Float32, Rational{Int}]
     @test ispermutation(vlist, [N[0, 2, 4], N[0, 3, 4], N[1, 2, 4],
         N[1, 3, 4], N[0, 2, 5], N[0, 3, 5], N[1, 2, 5], N[1, 3, 5]])
 
-    #constraints_list
+    # constraints_list
     hlist = constraints_list(CartesianProductArray([i1, i2, i3]))
     @test ispermutation(hlist,
         [LinearConstraint(sparsevec(N[1], N[1], 3), N(1)),
@@ -225,6 +225,19 @@ for N in [Float64, Float32, Rational{Int}]
         LinearConstraint(sparsevec(N[3], N[-1], 3), N(-4)),
         ])
     @test all(H -> dim(H) == 3, hlist)
+    # is_intersection_empty
+    cpa = CartesianProductArray([BallInf(ones(N, 5), N(1)),
+                                 BallInf(2 * ones(N, 5), N(0.5))])
+    b = BallInf(zeros(N, 10), N(1))
+    for (x, y) in [(cpa, b), (b, cpa)]
+        res, w = isdisjoint(x, y, true)
+        @test isdisjoint(x, y) && res && w == N[]
+    end
+    b = BallInf(ones(N, 10), N(1))
+    for (x, y) in [(cpa, b), (b, cpa)]
+        res, w = isdisjoint(x, y, true)
+        @test !isdisjoint(x, y) && !res && w ∈ x && w ∈ y
+    end
 
     # ========================================
     # Conversions of Cartesian Product Arrays
@@ -289,12 +302,15 @@ for N in [Float64, Float32]
     h2 = Hyperrectangle(low=N[5, 5], high=N[6, 8])
     cpa1 = CartesianProductArray([i1, i2, h1])
     cpa2 = CartesianProductArray([i1, i2, h2])
-    G = HPolyhedron([HalfSpace(N[1, 0, 0, 0], N(1))])
-    G_empty = HPolyhedron([HalfSpace(N[1, 0, 0, 0], N(-1))])
-	cpa1_box = overapproximate(cpa1)
-	cpa2_box = overapproximate(cpa2)
+    G = HalfSpace(N[1, 0, 0, 0], N(1))
+    G_empty = HalfSpace(N[1, 0, 0, 0], N(-1))
+    cpa1_box = overapproximate(cpa1)
+    cpa2_box = overapproximate(cpa2)
 
-    @test is_intersection_empty(cpa1, cpa2) == is_intersection_empty(cpa1_box, cpa2_box) == false
-    @test is_intersection_empty(cpa1, G_empty) == is_intersection_empty(cpa1_box, G_empty) == true
-    @test is_intersection_empty(cpa1, G) == is_intersection_empty(Approximations.overapproximate(cpa1), G) == false
+    @test !is_intersection_empty(cpa1, cpa2) &&
+          !is_intersection_empty(cpa1_box, cpa2_box)
+    @test is_intersection_empty(cpa1, G_empty) &&
+          is_intersection_empty(cpa1_box, G_empty)
+    @test !is_intersection_empty(cpa1, G) &&
+          !is_intersection_empty(Approximations.overapproximate(cpa1), G)
 end

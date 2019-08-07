@@ -180,11 +180,15 @@ for N in [Float64, Rational{Int}, Float32]
     @test P isa HPolytope # in 4D and for invertible map we get an HPolytope; see #631 and #1093
 
     # check that vertices_list is computed correctly if the hyperrectangle
-    # is "degenerate" in the sense that its radius is zero in all dimensions
-    # this test would take very long if all 2^100 vertices are computed (see #92)
-    H = Hyperrectangle(fill(N(1.), 100), fill(N(0.), 100))
+    # is "degenerate"/flat, i.e., its radius contains zeros
+    # these tests would crash if all 2^100 vertices were computed (see #92)
+    H = Hyperrectangle(ones(N, 100), zeros(N, 100))
     vl = vertices_list(H)
     @test vl == [H.center]
+    r = zeros(N, 100); r[1] = N(1)
+    H = Hyperrectangle(fill(N(1), 100), r)
+    vl = vertices_list(H)
+    @test ispermutation(vl, [H.center + r, H.center - r])
 
     # transform hyperrectangle into a polygon
     H1pol = convert(HPolygon, H1)
@@ -208,4 +212,14 @@ for N in [Float64, Rational{Int}, Float32]
           Hyperrectangle(N[1], N[1])
     @test convert(Hyperrectangle, SymmetricIntervalHull(Singleton(N[1, 1]))) ==
           Hyperrectangle(N[0, 0], N[1, 1])
+
+    # rectification
+    H = Hyperrectangle(N[-1, 2], N[4, 5])
+    Hrect = rectify(H)
+    @test Hrect.center == N[1.5, 3.5] &&  Hrect.radius == [1.5, 3.5]
+
+    # Minkowski sum
+    H1 = Hyperrectangle(N[0, 1], N[2, 3])
+    H2 = Hyperrectangle(N[3, 2], N[1, 0])
+    @test minkowski_sum(H1, H2) == Hyperrectangle(N[3, 3], N[3, 3])
 end
