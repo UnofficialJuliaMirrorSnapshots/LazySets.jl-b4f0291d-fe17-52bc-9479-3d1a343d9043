@@ -113,6 +113,27 @@ function generators(H::AbstractHyperrectangle)
     return HyperrectangleGeneratorIterator(H)
 end
 
+"""
+    ngens(H::AbstractHyperrectangle{N}) where {N<:Real}
+
+Return the number of generators of a hyperrectangular set.
+
+### Input
+
+- `H` -- hyperrectangular set
+
+### Output
+
+The number of generators.
+
+### Algorithm
+
+A hyperrectangular set has one generator for each non-flat dimension.
+"""
+function ngens(H::AbstractHyperrectangle{N}) where {N<:Real}
+    return sum(i -> radius_hyperrectangle(H, i) > zero(N), 1:dim(H))
+end
+
 
 # --- AbstractPolytope interface functions ---
 
@@ -379,17 +400,17 @@ Then ``x ∈ H`` iff ``|c_i - x_i| ≤ r_i`` for all ``i=1,…,n``.
 function ∈(x::AbstractVector{N},
            H::AbstractHyperrectangle{N})::Bool where {N<:Real}
     @assert length(x) == dim(H)
-    for i in eachindex(x)
-        if abs(center(H)[i] - x[i]) > radius_hyperrectangle(H, i)
+    c = center(H)
+    @inbounds for i in eachindex(x)
+        ri = radius_hyperrectangle(H, i)
+        if !_leq(abs(c[i] - x[i]), ri)
             return false
         end
     end
     return true
 end
 
-
 # --- common AbstractHyperrectangle functions ---
-
 
 """
     high(H::AbstractHyperrectangle{N})::Vector{N} where {N<:Real}
