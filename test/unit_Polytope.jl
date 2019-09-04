@@ -107,7 +107,7 @@ for N in [Float64, Rational{Int}, Float32]
 
     # translation
     P2 = translate(P, N[1, 2])
-    @test P2 isa HPolytope && ispermutation(constraints_list(P2),
+    @test P2 isa HPolytope{N} && ispermutation(constraints_list(P2),
         [HalfSpace(N[1, 0], N(2)), HalfSpace(N[0, 1], N(3)),
          HalfSpace(N[-1, -0], N(0)), HalfSpace(N[-0, -1], N(-1))])
 
@@ -121,10 +121,10 @@ for N in [Float64, Rational{Int}, Float32]
     # Concrete linear map
     # =====================
     LM = linear_map(N[2 3; 1 2], P) # invertible matrix
-    @test LM isa HPolytope
+    @test LM isa HPolytope{N}
     if test_suite_polyhedra
         LM = linear_map(N[2 3; 0 0], P)  # non-invertible matrix
-        @test LM isa VPolygon
+        @test LM isa VPolygon{N}
     end
 
     M = N[2 1; 0 1]
@@ -138,7 +138,7 @@ for N in [Float64, Rational{Int}, Float32]
 
     # do not check for invertibility => use the vertices
     L4 = linear_map(M, P, check_invertibility=false)
-    @test L4 isa VPolygon
+    @test L4 isa VPolygon{N}
 
     # linear map for mixed types
     M = [2 1; 0 1] # Int's
@@ -190,6 +190,8 @@ for N in [Float64, Rational{Int}, Float32]
     # membership
     @test N[.49, .49] ∈ p
     @test N[.51, .51] ∉ p
+    q = VPolytope([N[0, 1], N[0, 2]])
+    @test N[0, 1//2] ∉ q
 
     # translation
     @test translate(p, N[1, 2]) == VPolytope([N[1, 2], N[2, 2], N[1, 3]])
