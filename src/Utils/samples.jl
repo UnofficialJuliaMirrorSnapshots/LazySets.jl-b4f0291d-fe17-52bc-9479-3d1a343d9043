@@ -1,7 +1,12 @@
 function load_distributions_samples()
 return quote
 
-using .Distributions: Uniform, Normal
+using .Distributions: Distribution, Uniform, Normal
+import .Distributions
+
+# ======================================================
+# Sampling from a uniform distribution on balls/spheres
+# ======================================================
 
 """
     _sample_unit_nsphere_muller!(D::Vector{Vector{N}}, n::Int, p::Int;
@@ -113,6 +118,131 @@ function _sample_unit_nball_muller!(D::Vector{Vector{N}}, n::Int, p::Int;
         r = rand(rng, Zrad)
         β = r^one_over_n / sqrt(α)
         D[j] = v .* β
+    end
+    return D
+end
+
+# ========================
+# Sampling from a LazySet
+# ========================
+
+"""
+    Sampler
+
+Abstract type for defining new sample methods.
+
+### Notes
+
+All subtypes should implement a `_sample!` method.
+"""
+abstract type Sampler end
+
+"""
+    sample(X::LazySet{N}, num_samples::Int;
+           rng::AbstractRNG=GLOBAL_RNG,
+           seed::Union{Int, Nothing}=nothing) where {N}
+
+Sampling of an arbitrary `LazySet` `X`.
+
+### Input
+
+- `X`           -- lazyset
+- `num_samples` -- number of random samples
+- `sampler`     -- Sampler used (default: `RejectionSampler`)
+- `rng`         -- (optional, default: `GLOBAL_RNG`) random number generator
+- `seed`        -- (optional, default: `nothing`) seed for reseeding
+
+### Output
+
+A vector of `num_samples` vectors.
+If `num_samples` is not passed one sample as a single vector is returned.
+
+### Algorithm
+
+See the documentation of `RejectionSampler`.
+"""
+function sample(X::LazySet{N}, num_samples::Int;
+                sampler=RejectionSampler,
+                rng::AbstractRNG=GLOBAL_RNG,
+                seed::Union{Int, Nothing}=nothing) where {N<:Real}
+    require(:Distributions; fun_name="sample")
+    @assert isbounded(X) "this function requires that the set `X` is bounded"*
+                            ", but it is not"
+
+    D = Vector{Vector{N}}(undef, num_samples) # preallocate output
+    _sample!(D, sampler(X); rng=rng, seed=seed)
+    return D
+end
+
+# without argument, returns a single element (instead of a singleton)
+function sample(X::LazySet{N}; kwargs...) where {N<:Real}
+    return sample(X, 1; kwargs...)[1]
+end
+
+# =====================
+# Rejection Sampling
+# =====================
+
+"""
+    RejectionSampler{S<:LazySet, D<:Distribution} <: Sampler
+
+Type used for rejection sampling of an arbitrary `LazySet` `X`.
+
+### Fields
+
+- `X`           -- lazyset
+- `box_approx`  -- Distribution from which the sample is drawn
+
+### Algorithm
+
+Draw a sample ``x`` from a uniform distribution of a box-overapproximation of the
+original set ``X`` in all ``n`` dimensions. The function rejects a drawn sample ``x``
+and redraws as long as the sample is not contained in the original set ``X``,
+i.e., ``x ∉ X``.
+"""
+struct RejectionSampler{S<:LazySet, D<:Distribution} <: Sampler
+    X::S
+    box_approx::Vector{D}
+end
+
+function RejectionSampler(X, distribution=Uniform)
+    B = box_approximation(X)
+    canonical_support = hcat(low(B), high(B))
+    dims = size(canonical_support, 1)
+    box_approx = [distribution(canonical_support[i,:]...) for i = 1:dims]
+    return RejectionSampler(X, box_approx)
+end
+
+"""
+    _sample!(D::Vector{Vector{N}},
+             sampler::RejectionSampler;
+             rng::AbstractRNG=GLOBAL_RNG,
+             seed::Union{Int, Nothing}=nothing) where {N<:Real}
+
+Sample points using rejection sampling.
+
+### Input
+
+- `D`           -- output, vector of points
+- `sampler`     -- Sampler from which the points are sampled
+- `rng`         -- (optional, default: `GLOBAL_RNG`) random number generator
+- `seed`        -- (optional, default: `nothing`) seed for reseeding
+
+### Output
+
+A vector of `num_samples` vectors.
+"""
+function _sample!(D::Vector{Vector{N}},
+                  sampler::RejectionSampler;
+                  rng::AbstractRNG=GLOBAL_RNG,
+                  seed::Union{Int, Nothing}=nothing) where {N<:Real}
+    rng = reseed(rng, seed)
+    @inbounds for i in 1:length(D)
+        w = rand.(Ref(rng), sampler.box_approx)
+        while w ∉ sampler.X
+            w = rand.(Ref(rng), sampler.box_approx)
+        end
+        D[i] = w
     end
     return D
 end
