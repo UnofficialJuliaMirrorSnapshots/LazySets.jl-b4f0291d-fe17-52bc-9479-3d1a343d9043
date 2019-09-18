@@ -14,7 +14,9 @@ export LazySet,
        absorbing,
        tosimplehrep,
        isuniversal,
-       translate
+       translate,
+       affine_map,
+       is_interior_point
 
 """
     LazySet{N}
@@ -274,6 +276,28 @@ function diameter(S::LazySet, p::Real=Inf)
     return radius(S, p) * 2
 end
 
+"""
+    affine_map(M::AbstractMatrix, X::LazySet, v::AbstractVector)
+
+Compute a concrete affine map.
+
+### Input
+
+- `M` -- linear map
+- `X` -- convex set
+- `v` -- translation vector
+
+### Output
+
+A set representing the affine map of `X`.
+
+### Algorithm
+
+The implementation applies the functions `linear_map` and `translate`.
+"""
+function affine_map(M::AbstractMatrix, X::LazySet, v::AbstractVector)
+    return translate(linear_map(M, X), v)
+end
 
 """
     an_element(S::LazySet{N}) where {N<:Real}
@@ -487,6 +511,35 @@ function isuniversal(X::LazySet{N}, witness::Bool=false
     else
         return false
     end
+end
+
+"""
+    is_interior_point(d::AbstractVector{N}, P::LazySet{N};
+                      p=N(Inf), ε=_rtol(N)) where {N<:Real}
+
+Check if the point `d` is contained in the interior of the convex set `P`.
+
+### Input
+
+- `d`  -- point
+- `P`  -- set
+- `p`  -- (optional; default: `N(Inf)`) norm of the ball used to apply the error
+          tolerance
+- `ε`  -- (optional; default: `_rtol(N)`) error tolerance of check
+
+### Output
+
+Boolean which indicates if the point `d` is contained in `P`.
+
+### Algorithm
+
+The implementation checks if a `Ballp` of norm `p` with center `d` and radius
+`ε` is contained in the set `P`.
+This is a numerical check for `d ∈ interior(P)` with error tolerance `ε`.
+"""
+function is_interior_point(d::AbstractVector{N}, P::LazySet{N};
+                           p=N(Inf), ε=_rtol(N)) where {N<:Real}
+    return Ballp(p, d, ε) ⊆ P
 end
 
 """
