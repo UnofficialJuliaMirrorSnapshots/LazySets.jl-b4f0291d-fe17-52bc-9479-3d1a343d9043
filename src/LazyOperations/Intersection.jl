@@ -86,7 +86,7 @@ with the lowercase `intersection` function:
 
 ```jldoctest lazy_intersection
 julia> W = intersection(X, Y)
-Hyperrectangle{Float64}([0.375, 0.0], [0.125, 0.5])
+Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}}([0.375, 0.0], [0.125, 0.5])
 ```
 """
 struct Intersection{N<:Real, S1<:LazySet{N}, S2<:LazySet{N}} <: LazySet{N}
@@ -105,6 +105,8 @@ struct Intersection{N<:Real, S1<:LazySet{N}, S2<:LazySet{N}} <: LazySet{N}
         return new{N, S1, S2}(X, Y, cache)
     end
 end
+
+isoperationtype(::Type{<:Intersection}) = true
 
 # convenience constructor without type parameter
 Intersection(X::S1, Y::S2) where {N<:Real, S1<:LazySet{N}, S2<:LazySet{N}} =
@@ -679,6 +681,8 @@ struct IntersectionArray{N<:Real, S<:LazySet{N}} <: LazySet{N}
     array::Vector{S}
 end
 
+isoperationtype(::Type{<:IntersectionArray}) = true
+
 # constructor for an empty sum with optional size hint and numeric type
 function IntersectionArray(n::Int=0, N::Type=Float64)::IntersectionArray
     arr = Vector{LazySet{N}}()
@@ -899,7 +903,7 @@ minimizer.
 
 This function requires the `Optim` package, and relies on the univariate
 optimization interface `Optim.optimize(...)`.
-     
+
 Additional arguments to the `optimize` backend can be passed as keyword arguments.
 The default method is `Optim.Brent()`.
 
@@ -908,7 +912,7 @@ The default method is `Optim.Brent()`.
 ```jldoctest _line_search
 julia> X = Ball1(zeros(2), 1.0);
 
-julia> H = HalfSpace([-1.0, 0.0], -1.0); # x >= 0 
+julia> H = HalfSpace([-1.0, 0.0], -1.0); # x >= 0
 
 julia> using Optim
 
@@ -963,7 +967,7 @@ function _line_search(ℓ, X, H::Union{HalfSpace, Hyperplane, Line}; kwargs...)
 
     # Optimization
     sol = Optim.optimize(f, lower, upper, method=method, options...)
-    
+
     # Recover results
     fmin, λmin = sol.minimum, sol.minimizer
     return (fmin, λmin)

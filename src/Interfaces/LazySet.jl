@@ -16,7 +16,9 @@ export LazySet,
        isuniversal,
        translate,
        affine_map,
-       is_interior_point
+       is_interior_point,
+       isoperation,
+       isoperationtype
 
 """
     LazySet{N}
@@ -65,46 +67,51 @@ julia> subtypes(LazySet, false)
 If we only consider *concrete* subtypes, then:
 
 ```jldoctest; setup = :(using LazySets: subtypes)
-julia> subtypes(LazySet, true)
-37-element Array{Type,1}:
- Ball1
- Ball2
- BallInf
- Ballp
- CacheMinkowskiSum
- CartesianProduct
- CartesianProductArray
- ConvexHull
- ConvexHullArray
- Ellipsoid
- EmptySet
- ExponentialMap
- ExponentialProjectionMap
- HPolygon
- HPolygonOpt
- HPolyhedron
- HPolytope
- HalfSpace
- Hyperplane
- Hyperrectangle
- Intersection
- IntersectionArray
- Interval
- Line
- LineSegment
- LinearMap
- MinkowskiSum
- MinkowskiSumArray
- ResetMap
- Singleton
- SymmetricIntervalHull
- Translation
- Universe
- VPolygon
- VPolytope
- ZeroSet
- Zonotope
- ```
+julia> concrete_subtypes = subtypes(LazySet, true);
+
+julia> length(concrete_subtypes)
+38
+
+julia> println.(concrete_subtypes);
+AffineMap
+Ball1
+Ball2
+BallInf
+Ballp
+CacheMinkowskiSum
+CartesianProduct
+CartesianProductArray
+ConvexHull
+ConvexHullArray
+Ellipsoid
+EmptySet
+ExponentialMap
+ExponentialProjectionMap
+HPolygon
+HPolygonOpt
+HPolyhedron
+HPolytope
+HalfSpace
+Hyperplane
+Hyperrectangle
+Intersection
+IntersectionArray
+Interval
+Line
+LineSegment
+LinearMap
+MinkowskiSum
+MinkowskiSumArray
+ResetMap
+Singleton
+SymmetricIntervalHull
+Translation
+Universe
+VPolygon
+VPolytope
+ZeroSet
+Zonotope
+```
 """
 abstract type LazySet{N} end
 
@@ -588,3 +595,79 @@ function plot_recipe(X::LazySet{N}, ε::N=N(PLOT_PRECISION)) where {N<:Real}
     end
     return plot_recipe(Y, ε)
 end
+
+"""
+    isoperation(X::LazySet)
+
+Check whether the given `LazySet` is an instance of a set operation or not.
+
+### Input
+
+- `X` -- a `LazySet`
+
+### Output
+
+`true` if `X` is an instance of a set-based operation and `false` otherwise.
+
+### Notes
+
+The fallback implementation returns whether the set type of the input is an
+operation or not using `isoperationtype`.
+
+See also [`isoperationtype(X::Type{<:LazySet})`](@ref).
+
+### Examples
+
+```jldoctest
+julia> B = BallInf([0.0, 0.0], 1.0);
+
+julia> isoperation(B)
+false
+
+julia> isoperation(B ⊕ B)
+true
+```
+"""
+function isoperation(X::LazySet)
+    return isoperationtype(typeof(X))
+end
+
+isoperation(::Type{<:LazySet}) = error("`isoperation` cannot be applied to a set " *
+                                       "type; use `isoperationtype` instead")
+
+"""
+    isoperationtype(X::Type{<:LazySet})
+
+Check whether the given `LazySet` type is an operation or not.
+
+### Input
+
+- `X` -- subtype of `LazySet`
+
+### Output
+
+`true` if the given set type is a set-based operation and `false` otherwise.
+
+### Notes
+
+The fallback for this function returns an error that `isoperationtype` is not
+implemented. Subtypes of `LazySet` should dispatch on this function as required.
+
+See also [`isoperation(X<:LazySet)`](@ref).
+
+### Examples
+
+```jldoctest
+julia> isoperationtype(BallInf)
+false
+
+julia> isoperationtype(LinearMap)
+true
+```
+"""
+function isoperationtype(X::Type{<:LazySet})
+    error("`isoperationtype` is not implemented for type $X")
+end
+
+isoperationtype(::LazySet) = error("`isoperationtype` cannot be applied to " *
+                                   "a set instance; use `isoperation` instead")

@@ -45,13 +45,15 @@ exactly to a `Hyperrectangle` type:
 
 ```jldoctest cartesianproduct_constructor
 julia> convert(Hyperrectangle, I12)
-Hyperrectangle{Float64}([0.5, 3.0], [0.5, 1.0])
+Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}}([0.5, 3.0], [0.5, 1.0])
 ```
 """
 struct CartesianProduct{N<:Real, S1<:LazySet{N}, S2<:LazySet{N}} <: LazySet{N}
     X::S1
     Y::S2
 end
+
+isoperationtype(::Type{<:CartesianProduct}) = true
 
 # EmptySet is the absorbing element for CartesianProduct
 @absorbing(CartesianProduct, EmptySet)
@@ -331,6 +333,8 @@ function CartesianProductArray(n::Int=0, N::Type=Float64)::CartesianProductArray
     sizehint!(arr, n)
     return CartesianProductArray(arr)
 end
+
+isoperationtype(::Type{<:CartesianProductArray}) = true
 
 # EmptySet is the absorbing element for CartesianProductArray
 @absorbing(CartesianProductArray, EmptySet)
