@@ -522,7 +522,7 @@ a single hyperrectangle.
 ### Input
 
 - `Hyperrectangle` -- type used for dispatch
-- `S`              -- cartesian product array of hyperrectangular set 
+- `S`              -- cartesian product array of hyperrectangular set
 
 ### Output
 
@@ -587,7 +587,7 @@ hyperrectangle.
 ### Input
 
 - `Hyperrectangle` -- type used for dispatch
-- `S`              -- cartesian product array of intervals 
+- `S`              -- cartesian product array of intervals
 
 ### Output
 
@@ -730,6 +730,42 @@ function convert(X::Type{HPOLYGON},
 end
 
 """
+    convert(::Type{IntervalArithmetic.Interval}, x::Interval)
+
+Converts a `LazySets` interval to an `Interval` from `IntervalArithmetic`.
+
+### Input
+
+- `Interval` -- type used for dispatch, from `IntervalArithmetic`
+- `x`        -- interval (`LazySets.Interval`)
+
+### Output
+
+An `IntervalArithmetic.Interval`.
+"""
+function convert(::Type{IntervalArithmetic.Interval}, x::Interval)
+    return IntervalArithmetic.interval(min(x), max(x))
+end
+
+"""
+    convert(::Type{Interval}, x::IntervalArithmetic.Interval)
+
+Converts an `Interval` from `IntervalArithmetic` to an interval in `LazySets`.
+
+### Input
+
+- `Interval` -- type used for dispatch
+- `x`        -- interval (`IntervalArithmetic.Interval`)
+
+### Output
+
+A `LazySets.Interval`.
+"""
+function convert(::Type{Interval}, x::IntervalArithmetic.Interval)
+    return Interval(IntervalArithmetic.inf(x), IntervalArithmetic.sup(x))
+end
+
+"""
     convert(::Type{IntervalArithmetic.IntervalBox}, H::AbstractHyperrectangle)
 
 Converts a hyperrectangular set to an `IntervalBox` from `IntervalArithmetic`.
@@ -760,10 +796,16 @@ Converts an `IntervalBox` from `IntervalArithmetic` to a hyperrectangular set.
 ### Output
 
 A `Hyperrectangle`.
+
+### Notes
+
+`IntervalArithmetic.IntervalBox` uses *static* vectors to store each component
+interval, hence the resulting `Hyperrectangle` has its center and radius represented
+as a static vector (`SArray`).
 """
 function convert(::Type{Hyperrectangle}, IB::IntervalArithmetic.IntervalBox)
-    low_IB = Vector(IntervalArithmetic.inf.(IB))    # TODO: temprary conversion, see #1214
-    high_IB = Vector(IntervalArithmetic.sup.(IB))   # TODO: temprary conversion, see #1214
+    low_IB = IntervalArithmetic.inf.(IB)
+    high_IB = IntervalArithmetic.sup.(IB)
     return Hyperrectangle(low=low_IB, high=high_IB)
 end
 
