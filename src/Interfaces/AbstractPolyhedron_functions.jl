@@ -4,7 +4,8 @@ export constrained_dimensions,
        tosimplehrep,
        remove_redundant_constraints,
        remove_redundant_constraints!,
-       linear_map
+       linear_map,
+       chebyshev_center
 
 # default LP solver for floating-point numbers
 function default_lp_solver(N::Type{<:AbstractFloat})
@@ -232,27 +233,35 @@ end
 """
     linear_map(M::AbstractMatrix{N},
                P::AbstractPolyhedron{N};
-               check_invertibility::Bool=true,
-               cond_tol::Number=DEFAULT_COND_TOL,
-               use_inv::Bool=!issparse(M)
-               ) where {N<:Real}
+               [algorithm]::Union{String, Nothing}=nothing,
+               [check_invertibility]::Bool=true,
+               [cond_tol]::Number=DEFAULT_COND_TOL,
+               [inverse]::Union{AbstractMatrix{N}, Nothing}=nothing
+              ) where {N<:Real}
 
-Concrete linear map of a polyhedron in constraint representation.
+Concrete linear map of a polyhedral set.
 
 ### Input
 
-- `M` -- matrix
-- `P` -- abstract polyhedron
+- `M`         -- matrix
+- `P`         -- polyhedral set
+- `algorithm` -- (optional; default: `nothing`, see the Notes section below)
+                 algorithm to be used; possible choices are:
+  - `"vrep"`     -- apply the linear map to each vertex of `P` (note that this
+                    only works for *polytopes*)
+  - `"inverse"`  -- compute the matrix inverse and apply it to each constraint
+                    of `P`
+  - `"division"` -- divide each constraint of `P` by `M` from the left
 - `check_invertibility` -- (optional, deault: `true`) check if the linear map is
-                           invertible, in which case this function uses the matrix
-                           inverse; if the invertibility check fails, or if
-                           this flag is set to `false`, use the vertex representation
-                           to compute the linear map (see below for details)
-- `cond_tol` -- (optional) tolerance of matrix condition (used to check whether
-                the matrix is invertible)
-- `use_inv`  -- (optional, default: `false` if `M` is sparse and `true`
-                otherwise) whether to compute the full left division through
-                `inv(M)`, or to use the left division for each vector; see below 
+                           invertible, in which case this function uses the
+                           matrix inverse; if this flag is set to `false`, we
+                           assume that the matrix is invertible; otherwise, if
+                           the invertibility check fails, we fall back to the
+                           `"vrep"` algorithm; this option is ignored if the
+                           `"vrep"` algorithm is used
+- `cond_tol`  -- (optional; default: `DEFAULT_COND_TOL`) tolerance of matrix
+                 condition (used to check whether the matrix is invertible)
+- `inverse`   -- (optional; default: `nothing`) matrix inverse (if known)
 
 ### Output
 
@@ -281,56 +290,103 @@ that was used:
       an `HPolygon` if `m = 2` and an `HPolytope` in other cases.
     - Otherwise, the output is an `HPolyhedron`.
 
+### Notes
+
+If `algorithm` is `nothing` (the default), we determine the algorithm as
+follows.
+If `M` is sparse or non-square, and has full row rank (which we check), we use
+`"division"`.
+If `M` is dense and square and invertible (either assumed or checked; see option
+`check_invertibility`), we use `"inverse"`.
+Otherwise, we use `"vrep"`.
+
 ### Algorithm
 
 This function implements two algorithms for the linear map:
 
-- If the matrix ``M`` is invertible (which we check with a sufficient condition),
+- If the matrix ``M`` is invertible (which we check via a sufficient condition),
   then ``y = M x`` implies ``x = \\text{inv}(M) y`` and we transform the
   constraint system ``A x ≤ b`` to ``A \\text{inv}(M) y ≤ b``.
-- Otherwise, we transform the polyhedron to vertex representation and apply the map
-  to each vertex, returning a polyhedron in vertex representation. 
+- Otherwise, we transform the polyhedron to vertex representation and apply the
+  map to each vertex, returning a polyhedron in vertex representation.
 
 Note that the vertex representation (second approach) is only available if the
-polyhedron is bounded. Hence we check boundedness first.
+polyhedron is bounded, which we check.
 
-To switch off the check for invertibility, set the option
-`check_invertibility=false`. If `M` is not invertible and the polyhedron
-is unbounded, this function returns an exception.
+If the matrix is known to be invertible, the the option `check_invertibility`
+can be used to skip the invertibility test.
+Note that we only check for invertibility if the `algorithm` is either
+unspecified or specified as `"inverse"`.
+If the matrix inverse is even known, it can be specified with the option
+`inverse`, in which case we ignore the other options and also the original
+matrix `M`.
 
-The option `use_inv` lets the user control - in case `M` is invertible - if
-the full matrix inverse is computed, or only the left division on the normal
-vectors. Note that this helps as a workaround when `M` is a sparse matrix, since
-the `inv` function is not available for sparse matrices. In this case, either
-use the option `use_inv=false` or convert the type of `M` as in
-`linear_map(Matrix(M), P)`.
+The algorithms `"division"` and `"inverse"` give control about whether the full
+matrix inverse is computed or only the left division on the normal vectors is
+used.
+Note that this helps as a workaround when `M` is sparse (since the `inv`
+function is not available for sparse matrices) or rectangular.
+For sparse and invertible matrices, either use the algorithm `"division"` or
+convert `M` to a dense matrix (as in `linear_map(Matrix(M), P)`).
 
-Internally, this function operates at the level of the `AbstractPolyhedron`
+Internally, this function operates on the level of the `AbstractPolyhedron`
 interface, but the actual algorithm uses dispatch on the concrete type of `P`,
 depending on the algorithm that is used:
 
--  `_linear_map_vrep(M, P)` if the vertex approach is used
--  `_linear_map_hrep(M, P, use_inv)` if the invertibility criterion is used
+- `_linear_map_vrep(M, P)` if the vertex approach is used
+- `_linear_map_hrep(M, P, use_inv)` if the invertibility criterion is used,
+  where `use_inv` is determined by the algorithm
 
-New subtypes of the interface should write their own `_linear_map_vrep`
+New subtypes of the interface should define their own `_linear_map_vrep`
 (resp. `_linear_map_hrep`) for special handling of the linear map; otherwise
-the fallback implementation for `AbstractPolyhedron` is used (see below).
+the fallback implementation for `AbstractPolyhedron` is used.
 """
 function linear_map(M::AbstractMatrix{N},
                     P::AbstractPolyhedron{N};
+                    algorithm::Union{String, Nothing}=nothing,
                     check_invertibility::Bool=true,
                     cond_tol::Number=DEFAULT_COND_TOL,
-                    use_inv::Bool=!issparse(M)
+                    inverse::Union{AbstractMatrix{N}, Nothing}=nothing
                    ) where {N<:Real}
+    # if `inverse` is specified, we ignore other inputs and do not check them
+    if inverse != nothing
+        return _linear_map_hrep(M, P, true; inverse=inverse)
+    end
+
     @assert dim(P) == size(M, 2) "a linear map of size $(size(M)) cannot be " *
         "applied to a set of dimension $(dim(P))"
 
-    if !check_invertibility || !isinvertible(M; cond_tol=cond_tol)
-        # vertex representation is enforced or the matrix is not invertible => use vertex approach
+    if algorithm == nothing
+        if issparse(M) || !issquare(M)
+            if hasfullrowrank(M)
+                algorithm = "division"
+            else
+                algorithm = "vrep"
+            end
+        elseif !check_invertibility || isinvertible(M; cond_tol=cond_tol)
+            algorithm = "inverse"
+        else
+            algorithm = "vrep"
+        end
+    elseif algorithm == "inverse"
+        # check invertibility
+        if check_invertibility && !isinvertible(M; cond_tol=cond_tol)
+            throw(ArgumentError("algorithm \"inverse\" requires an " *
+                                "invertible matrix"))
+        end
+    end
+
+    if algorithm == "vrep"
         return _linear_map_vrep(M, P)
     else
-        # matrix M is invertible => use H-rep approach
-        # the normal vectors are vec(c.a' * inv(M))
+        if algorithm == "inverse"
+            use_inv = true
+        elseif algorithm == "division"
+            use_inv = false
+        else
+            throw(ArgumentError("got unknown algorithm \"$algorithm\"; " *
+                "available choices: \"vrep\", \"inverse\", \"division\""))
+        end
         return _linear_map_hrep(M, P, use_inv)
     end
 end
@@ -361,19 +417,26 @@ function _linear_map_vrep(M::AbstractMatrix{N}, P::AbstractPolyhedron{N}) where 
 end
 
 function _linear_map_hrep(M::AbstractMatrix{N}, P::AbstractPolyhedron{N},
-                          use_inv::Bool) where {N<:Real}
-    constraints = _linear_map_hrep_helper(M, P, use_inv)
+                          use_inv::Bool;
+                          inverse::Union{Nothing, AbstractMatrix{N}}=nothing
+                         ) where {N<:Real}
+    constraints = _linear_map_hrep_helper(M, P, use_inv, inverse=inverse)
     return HPolyhedron(constraints)
 end
 
 function _linear_map_hrep_helper(M::AbstractMatrix{N}, P::AbstractPolyhedron{N},
-                                 use_inv::Bool) where {N<:Real}
+                                 use_inv::Bool;
+                                 inverse::Union{Nothing, AbstractMatrix{N}}=nothing
+                                ) where {N<:Real}
     constraints_P = constraints_list(P)
     constraints_MP = similar(constraints_P)
-    if use_inv
-        invM = inv(M)
+    if use_inv || inverse != nothing
+        if inverse == nothing
+            inverse = inv(M)
+        end
         @inbounds for (i, c) in enumerate(constraints_P)
-            constraints_MP[i] = LinearConstraint(vec(_At_mul_B(c.a, invM)), c.b)
+            constraints_MP[i] =
+                LinearConstraint(vec(_At_mul_B(c.a, inverse)), c.b)
         end
     else
         # take left division for each constraint c, transpose(M) \ c.a
@@ -430,4 +493,53 @@ function plot_recipe(P::AbstractPolyhedron{N}, ε::N=zero(N)) where {N<:Real}
 
         return x, y
     end
+end
+
+"""
+    chebyshev_center(P::AbstractPolyhedron{N};
+                     [get_radius]::Bool=false,
+                     [backend]=default_polyhedra_backend(P, N),
+                     [solver]=JuMP.with_optimizer(GLPK.Optimizer)
+                     ) where {N<:AbstractFloat}
+
+Compute the [Chebyshev center](https://en.wikipedia.org/wiki/Chebyshev_center)
+of a polytope.
+
+### Input
+
+- `P`          -- polytope
+- `get_radius` -- (optional; default: `false`) option to additionally return the
+                  radius of the largest ball enclosed by `P` around the
+                  Chebyshev center
+- `backend`    -- (optional; default: `default_polyhedra_backend(P, N)`) the
+                  backend for polyhedral computations
+- `solver`     -- (optional; default: `JuMP.with_optimizer(GLPK.Optimizer)`) the
+                  LP solver passed to `Polyhedra`
+
+### Output
+
+If `get_radius` is `false`, the result is the Chebyshev center of `P`.
+If `get_radius` is `true`, the result is the pair `(c, r)` where `c` is the
+Chebyshev center of `P` and `r` is the radius of the largest ball with center
+`c` enclosed by `P`.
+
+### Notes
+
+The Chebyshev center is the center of a largest Euclidean ball enclosed by `P`.
+In general, the center of such a ball is not unique (but the radius is).
+"""
+function chebyshev_center(P::AbstractPolyhedron{N};
+                          get_radius::Bool=false,
+                          backend=default_polyhedra_backend(P, N),
+                          solver=JuMP.with_optimizer(GLPK.Optimizer)
+                         ) where {N<:AbstractFloat}
+    require(:Polyhedra; fun_name="chebyshev_center")
+    # convert to HPolyhedron to ensure `polyhedron` is applicable (see #1505)
+    Q = polyhedron(convert(HPolyhedron, P); backend=backend)
+    c, r = Polyhedra.chebyshevcenter(Q, solver)
+
+    if get_radius
+        return c, r
+    end
+    return c
 end

@@ -23,6 +23,7 @@ center(::Ball2{N}) where {N<:AbstractFloat}
 rand(::Type{Ball2})
 sample(::Ball2{N}, ::Int) where {N<:AbstractFloat}
 translate(::Ball2{N}, ::AbstractVector{N}) where {N<:AbstractFloat}
+chebyshev_center(::Ball2{N}) where {N<:AbstractFloat}
 ```
 Inherited from [`LazySet`](@ref):
 * [`norm`](@ref norm(::LazySet, ::Real))
@@ -698,7 +699,7 @@ generators(Z::Zonotope)
 genmat(Z::Zonotope)
 scale(::Real, ::Zonotope)
 ngens(::Zonotope)
-reduce_order(::Zonotope, r)
+reduce_order(::Zonotope, ::Union{Integer, Rational})
 split(::Zonotope, ::Int)
 ```
 
